@@ -1,0 +1,133 @@
+.list-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+}
+
+.list-table th,
+.list-table td {
+  border: 1px solid #ddd; /* ← 薄いグレーでモダン */
+  padding: 8px;
+}
+
+.list-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.list-row:hover {
+  background-color: #f0f8ff;
+}
+
+/* 偶数行（2,4,6,...） */
+.list-row:nth-child(even) {
+  background-color: #fafafa;
+}
+
+/* 奇数行（1,3,5,...） */
+.list-row:nth-child(odd) {
+  background-color: #ffffff;
+}
+
+/* ホバー時（優先される） */
+.list-row:hover {
+  background-color: #f0f8ff;
+}
+
+button {
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+button:hover {
+  background: #f5f5f5;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+button:active {
+  background: #eaeaea;
+}
+
+/* 詳細テーブル（ヘッダ情報） */
+.detail-header-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.detail-header-table th,
+.detail-header-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  background: #fafafa;
+  font-size: 14px;
+}
+
+/* 明細テーブル */
+.detail-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+}
+
+.detail-table th,
+.detail-table td {
+  border: 1px solid #ddd;
+  padding: 6px 8px;
+  height: 28px; /* 行の高さを揃える */
+}
+
+/* ストライプ（やりすぎない薄さ） */
+.detail-table tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+/* 金額・数量は右揃え */
+.text-right {
+  text-align: right;
+}
+
+/* ボタン（一覧と統一） */
+button {
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+button:hover {
+  background: #f5f5f5;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+button:active {
+  background: #eaeaea;
+}
+
+button:disabled {
+  background-color: #f5f5f5;
+  border-color: #ccc;
+  color: #aaa;
+  opacity: 1; /* 完全に上書き */
+}
+
+.detail-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.detail-table tbody tr:hover {
+  background-color: #f3f8ff;
+}
+
+.table-header th {
+  background-color: #dde8f7;
+  border-bottom: 1px solid #a5bfe4;
+  font-weight: bold;
+}
