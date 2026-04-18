@@ -23,6 +23,7 @@ export default function App() {
   const [data, setData] = useState<MitsumoriListResult | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [pageSize, setPageSize] = useState(10);
+  const [searchClient, setSearchClient] = useState("");
 
   // 検索語
   // const [searchClient, setSearchClient] = useState("");
@@ -31,7 +32,7 @@ export default function App() {
   // 検索語が変わったら page=0 に戻す
   useEffect(() => {
     setPage(0);
-  }, [/*searchClient, searchItem*/]);
+  }, [searchClient/*, searchItem*/]);
 
   console.log("invoke params:", {
     page,
@@ -44,12 +45,12 @@ export default function App() {
     invoke<MitsumoriListResult>("get_mitsumori_list", {
       page,
       pageSize,
-      // searchClient: searchClient,
+      searchClient,
       // searchItem: searchItem,
     })
       .then((res) => setData(res))
       .catch(console.error);
-  }, [page, pageSize, /*searchClient, searchItem*/]);
+  }, [page, pageSize, searchClient/*, searchItem*/]);
 
   // 詳細画面
   if (selected !== null) {
@@ -94,7 +95,7 @@ export default function App() {
         }}
       >
         {/* 左側：ページングボタン */}
-        <div>
+        <div style={{ marginRight: 10 }}>
           <button
             onClick={() => setPage(0)}
             disabled={page === 0}
@@ -122,6 +123,15 @@ export default function App() {
           </button>
         </div>
 
+        {/* 🔍 検索ボックス（← select の直前に移動） */}
+        🔍<input
+          type="text"
+          placeholder="見積先で検索"
+          value={searchClient}
+          onChange={(e) => setSearchClient(e.target.value)}
+          style={{ padding: 6, width: 200, marginRight: 10 }}
+        />
+
         {/* 右側：件数選択 */}
         <select
           value={pageSize}
@@ -130,8 +140,8 @@ export default function App() {
             setPage(0);
           }}
           style={{
-            marginLeft: "auto",
             padding: 6,
+            marginLeft: "auto",
           }}
         >
           <option value={20}>20件</option>
@@ -140,6 +150,7 @@ export default function App() {
           <option value={1000}>1000件</option>
         </select>
       </div>
+
 
 
       {/* 一覧テーブル */}
