@@ -154,9 +154,7 @@ export default function App() {
               </td>
 
               <td style={{ textAlign: "right" }}>
-                {row.goukei_kingaku
-                  ? row.goukei_kingaku.toLocaleString()
-                  : ""}
+                {row.goukei_kingaku?.toLocaleString()}
               </td>
             </tr>
           ))}
