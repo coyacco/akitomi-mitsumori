@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 
 interface Header {
   mitsumori_no: number;
@@ -23,13 +22,33 @@ interface DetailRow {
 export default function Detail({ no, onBack }: { no: number; onBack: () => void }) {
   const [header, setHeader] = useState<Header | null>(null);
   const [items, setItems] = useState<DetailRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    invoke<Header>("get_mitsumori_header", { no }).then(setHeader);
-    invoke<DetailRow[]>("get_mitsumori_detail", { no }).then(setItems);
+    async function load() {
+      try {
+        // --- Header ---
+        const h = await fetch(`http://localhost:3001/api/mitsumori/header/${no}`)
+          .then((res) => res.json());
+        setHeader(h);
+
+        // --- Detail rows ---
+        const d = await fetch(`http://localhost:3001/api/mitsumori/detail/${no}`)
+          .then((res) => res.json());
+        setItems(d);
+      } catch (err) {
+        console.error("Detail fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
   }, [no]);
 
-  if (!header) return <div>Loading...</div>;
+  if (loading || !header) {
+    return <div style={{ padding: 20 }}>Loading...</div>;
+  }
 
   return (
     <div style={{ padding: 20 }}>

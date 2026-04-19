@@ -51,7 +51,6 @@ fn get_mitsumori_list(
     page: i32,
     pageSize: i32,
     searchClient: String,
-    // searchItem: String,
 ) -> Result<MitsumoriListResult, String> {
     // ここではまだ検索に使わず、元の SQL をそのまま返す
     let db_path = ensure_db_exists(&app)?;
@@ -64,29 +63,6 @@ fn get_mitsumori_list(
     let total: i32 = conn
         .query_row("SELECT COUNT(*) FROM mitsumori", [], |row| row.get(0))
         .map_err(|e| e.to_string())?;
-
-    // // ページング付き一覧
-    // let mut stmt = conn
-    //     .prepare(
-    //         "SELECT mitsumori_no, sakusei, mitsumorisaki_meisho, keisho, goukei_kingaku
-    // FROM mitsumori WHERE mitsumorisaki_meisho LIKE \"%グリーン%\"
-    // ORDER BY mitsumori_no DESC
-    // LIMIT ? OFFSET ? ",
-    //     )
-    //     .map_err(|e| e.to_string())?;
-
-    // let rows = stmt
-    //     .query_map([disp_num, offset], |row| {
-    //         Ok(MitsumoriListRow {
-    //             mitsumori_no: row.get(0)?,
-    //             sakusei: row.get(1).ok(),
-    //             mitsumorisaki_meisho: row.get(2).ok(),
-    //             keisho: row.get(3).ok(),
-    //             goukei_kingaku: row.get(4).ok(),
-    //             items: vec![], // ← 追加していたので空で返す
-    //         })
-    //     })
-    //     .map_err(|e| e.to_string())?;
 
     // ページング付き一覧（searchClient を動的に使用）
     let mut stmt = conn

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import Detail from "./Detail";
 import "./App.css";
 
@@ -23,34 +22,28 @@ export default function App() {
   const [data, setData] = useState<MitsumoriListResult | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [pageSize, setPageSize] = useState(10);
-  const [searchClient, setSearchClient] = useState("");
-
-  // 検索語
-  // const [searchClient, setSearchClient] = useState("");
-  // const [searchItem, setSearchItem] = useState("");
+  const [searchClient, setSearchClient] = useState(""); // 検索語
 
   // 検索語が変わったら page=0 に戻す
   useEffect(() => {
     setPage(0);
   }, [searchClient/*, searchItem*/]);
 
-  console.log("invoke params:", {
-    page,
-    // searchClient: searchClient,
-    // searchItem: searchItem,
-  });
-
-  // 一覧データ取得（検索語も渡す）
   useEffect(() => {
-    invoke<MitsumoriListResult>("get_mitsumori_list", {
-      page,
-      pageSize,
-      searchClient,
-      // searchItem: searchItem,
-    })
-      .then((res) => setData(res))
-      .catch(console.error);
-  }, [page, pageSize, searchClient/*, searchItem*/]);
+    fetchList();
+  }, [page, pageSize, searchClient]);
+
+  async function fetchList() {
+    const url =
+      `http://localhost:3001/api/mitsumori/list` +
+      `?page=${page + 1}` +
+      `&page_size=${pageSize}` +
+      `&search_client=${encodeURIComponent(searchClient)}`;
+
+    const res = await fetch(url);
+    const json = await res.json();
+    setData(json);
+  }
 
   // 詳細画面
   if (selected !== null) {
@@ -64,27 +57,6 @@ export default function App() {
   return (
     <div style={{ padding: 20 }}>
       <h1>見積書一覧</h1>
-
-      {/* 🔍 検索ボックス
-      <div style={{ marginBottom: 10 }}>
-        <input
-          type="text"
-          placeholder="見積もり先で検索"
-          value={searchClient}
-          onChange={(e) => setSearchClient(e.target.value)}
-          style={{ marginRight: 10, padding: 6, width: 200 }}
-        />
-
-        <input
-          type="text"
-          placeholder="品目で検索"
-          value={searchItem}
-          onChange={(e) => setSearchItem(e.target.value)}
-          style={{ padding: 6, width: 200 }}
-        />
-      </div> */}
-
-
 
       {/* ページング */}
       <div
@@ -101,7 +73,7 @@ export default function App() {
             disabled={page === 0}
             style={{ marginRight: 5 }}
           >
-            ≪ 最新へ
+            最新へ
           </button>
 
           <button
@@ -109,7 +81,7 @@ export default function App() {
             disabled={page === 0}
             style={{ marginRight: 5 }}
           >
-            ＜
+            前へ
           </button>
 
           ({page + 1}/{totalPages})
@@ -119,7 +91,7 @@ export default function App() {
             disabled={page >= totalPages - 1}
             style={{ marginLeft: 5 }}
           >
-            ＞
+            次へ
           </button>
         </div>
 
@@ -150,8 +122,6 @@ export default function App() {
           <option value={1000}>1000件</option>
         </select>
       </div>
-
-
 
       {/* 一覧テーブル */}
       <table className="list-table">
