@@ -278,12 +278,33 @@ async fn main() {
 async fn pdf_handler(Path(no): Path<i32>) -> impl IntoResponse {
     println!("pdf_handler {}", no);
 
-    // 1. DB から header/detail を取得
-    let header = load_header(no);
+    // 1. DB から header/detail/company を取得
+    let mut header = load_header(no);
     let items = load_detail(no);
     let company = load_company();
 
-    // 2. HTML を生成
+    // 2. 全角スペース → 半角スペース
+    fn normalize(s: Option<String>) -> String {
+        s.unwrap_or_default().replace("　", " ")
+    }
+
+    header.mitsumorisaki_meisho = Some(normalize(header.mitsumorisaki_meisho.clone()));
+    header.keisho = Some(normalize(header.keisho.clone()));
+    header.torihiki_jouken = Some(normalize(header.torihiki_jouken.clone()));
+    header.yukou_kigen = Some(normalize(header.yukou_kigen.clone()));
+    header.ukewatashi_kijitu = Some(normalize(header.ukewatashi_kijitu.clone()));
+    header.ukewatashi_basho = Some(normalize(header.ukewatashi_basho.clone()));
+
+    // 3. HTML エスケープ
+    fn esc(s: &str) -> String {
+        s.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;")
+    }
+
+    // 4. HTML を生成
     let html = build_pdf_html(&header, &items, &company);
 
     let html_path = format!("temp_{}.html", no);
@@ -314,26 +335,34 @@ async fn pdf_handler(Path(no): Path<i32>) -> impl IntoResponse {
 
     println!("pdf_str = {}", pdf_str);
 
-    // 4. Chromium の print-to-pdf を実行
+    // 5. Chromium の print-to-pdf を実行（stdout/stderr を取得）
     let chrome_path = r"C:\Program Files\Google\Chrome\Application\chrome.exe";
-    // let chrome_path = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe";
 
-    println!("chrome_path = {}", chrome_path);
-
-    let status = Command::new(chrome_path)
+    let output = Command::new(chrome_path)
         .args([
             "--headless",
             "--disable-gpu",
+            "--no-sandbox",
+            "--no-pdf-header-footer",
             &format!("--print-to-pdf={}", pdf_str),
             &html_url,
         ])
-        .status()
+        .output()
         .unwrap();
 
-    // 5. PDF を読み込んで返す
-    let pdf_bytes = std::fs::read(&pdf_str).unwrap();
+    println!("stdout = {}", String::from_utf8_lossy(&output.stdout));
+    println!("stderr = {}", String::from_utf8_lossy(&output.stderr));
 
-    // 6. 後片付け
+    // 6. PDF を読み込む（失敗時はエラー PDF を返す）
+    let pdf_bytes = match std::fs::read(&pdf_str) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            let msg = b"%PDF-1.4\n% Chrome failed to generate PDF.\n";
+            msg.to_vec()
+        }
+    };
+
+    // 7. 後片付け
     let _ = std::fs::remove_file(&html_path);
     let _ = std::fs::remove_file(&pdf_str);
 
@@ -524,7 +553,7 @@ pub fn build_pdf_html(
 
     // 合計金額（大文字）
     let goukei_main = if let Some(g) = header.goukei {
-        format!("￥{} -", kingaku_format(g))
+        format!("￥{}-", kingaku_format(g))
     } else {
         "".to_string()
     };
@@ -588,7 +617,7 @@ pub fn build_pdf_html(
     }}
 
     body {{
-        font-family: 'IPAexGothic', sans-serif;
+        font-family: 'Noto Sans JP', sans-serif;
         font-size: 11px;
     }}
 
@@ -614,48 +643,13 @@ pub fn build_pdf_html(
         text-align:center; padding-bottom:2mm;
     }}
 
-    .goukei-label {{
-        position:absolute; left:20mm; top:34mm;
-        font-size:14px;
-    }}
-
-    .goukei-main {{
-        position:absolute; left:40mm; top:34mm;
-        width:60mm; font-size:20px;
-        text-align:center; border-bottom:1px solid #000;
-        padding-bottom:2mm;
-    }}
-
-    .info-label {{
-        position:absolute; left:20mm; font-size:10px;
-    }}
-    .info-value {{
-        position:absolute; left:40mm; font-size:11px;
-        width:60mm; border-bottom:1px solid #000;
-    }}
-
     .company-block {{
     position: absolute;
-    left: 110mm;
+    left: 130mm;
     top: 28mm;
     width: 90mm;
-    text-align: center;
-    font-size: 10px;
-    }}
-
-    .company-name {{
-    font-size: 22px;
-    margin-top: 2mm;
-    position: relative;   /* ← これが重要 */
-    }}
-
-    .kabushiki {{
-    position: absolute;
-    left: 23mm;   /* ← 秋富商店の左に配置 */
-    top: 7.5mm;      /* ← 高さを揃える */
+    text-align: left;
     font-size: 11px;
-    line-height: 1.0;
-    white-space: pre;
     }}
 
     .item-header {{
@@ -689,7 +683,6 @@ pub fn build_pdf_html(
     }}
 
     table.item-table {{
-        width: 180mm;   /* ← 190mm → 180mm に変更 */
         border-collapse: collapse;
         font-size: 11px;
     }}
@@ -702,7 +695,7 @@ pub fn build_pdf_html(
         text-align:center; background:#f0f0f0;
     }}
 
-    table.item-table th:nth-child(1) {{ width:85mm; }}
+    table.item-table th:nth-child(1) {{ width:110mm; }}
     table.item-table th:nth-child(2) {{ width:13mm; }}
     table.item-table th:nth-child(3) {{ width:10mm; }}
     table.item-table th:nth-child(4) {{ width:20mm; }}
@@ -758,35 +751,42 @@ pub fn build_pdf_html(
 
 <div class="mitsumorisaki">{mitsumorisaki} {keisho}</div>
 
-<div class="goukei-label">合計金額</div>
-<div class="goukei-main">{goukei_main}</div>
+<div style="position:absolute; left:20mm; top:34mm; font-size:16px; vertical-align:bottom;">合計金額</div>
+<div style="position:absolute; left:40mm; top:34mm; width:60mm; font-size:20px; text-align:center; vertical-align:bottom; border-bottom:1px solid #000; padding-bottom:2mm;">{goukei_main}</div>
 
 {kaishain_html}
 
-<!-- 取引条件 -->
-<div class="info-label" style="top:43mm;">取引条件</div>
-<div class="info-value" style="top:43mm;">{torihiki}</div>
+<table style="position:absolute; left:20mm; top:48mm; width:80mm; font-size:12px; border-collapse:collapse;">
+  <tr>
+    <td style="width:20mm; ">取引条件</td>
+    <td style="border-bottom:1px solid #000;">{torihiki}</td>
+  </tr>
+  <tr>
+    <td style="">有効期限</td>
+    <td style="border-bottom:1px solid #000;">{yukou}</td>
+  </tr>
+  <tr>
+    <td style="">受渡期日</td>
+    <td style="border-bottom:1px solid #000;">{kijitu}</td>
+  </tr>
+  <tr>
+    <td style="">受渡場所</td>
+    <td style="border-bottom:1px solid #000;">{basho}</td>
+  </tr>
+</table>
 
-<!-- 有効期限 -->
-<div class="info-label" style="top:49mm;">有効期限</div>
-<div class="info-value" style="top:49mm;">{yukou}</div>
-
-<!-- 受渡期日 -->
-<div class="info-label" style="top:55mm;">受渡期日</div>
-<div class="info-value" style="top:55mm;">{kijitu}</div>
-
-<!-- 受渡場所 -->
-<div class="info-label" style="top:61mm;">受渡場所</div>
-<div class="info-value" style="top:61mm;">{basho}</div>
-
-<!-- 会社情報 -->
 <div class="company-block">
-    <div>{yubin} {jusho1}</div>
-    <div class="company-name">秋 富 商 店</div>
-    <div class="kabushiki">株式<br>会社</div>
-    <div class="company-rep">{daihyou}</div>
-    <div class="company-tel">TEL:{tel}　FAX:{fax}</div>
-    <div class="company-bank">取引銀行:{ginkou}</div>
+    <div style="display:inline-block; font-size:16px; vertical-align:bottom;">
+        株式会社
+    </div>
+    <div style="display:inline-block; font-size:20px; vertical-align:bottom;">
+        秋 富 商 店
+    </div>
+
+    <div style="margin-top:2mm;">{daihyou}</div>
+    <div>〒{yubin} {jusho1}</div>
+    <div>TEL:{tel} FAX:{fax}</div>
+    <div>取引銀行:{ginkou}</div>
 </div>
 
 <!-- 明細 -->
