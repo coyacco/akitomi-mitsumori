@@ -6,16 +6,14 @@ interface Header {
   mitsumorisaki_meisho: string | null;
   keisho: string | null;
   goukei_kingaku: number | null;
-  bikou: string | null;
 }
 
 interface DetailRow {
   hinmoku: string;
-  siyou: string;
-  suryo: number;
+  suryo: number | null;
   tanni: string;
-  tannka: number;
-  kingaku: number;
+  tannka: number | null;
+  kingaku: number | null;
   bikou: string;
 }
 
@@ -83,7 +81,7 @@ export default function Detail({ no, onBack }: { no: number; onBack: () => void 
           </tr>
           <tr>
             <th>備考</th>
-            <td>{header.bikou || ""}</td>
+            <td>{""}</td>
           </tr>
         </tbody>
       </table>
@@ -93,7 +91,6 @@ export default function Detail({ no, onBack }: { no: number; onBack: () => void 
         <thead className="table-header">
           <tr>
             <th>品目</th>
-            <th>仕様</th>
             <th>数量</th>
             <th>単位</th>
             <th>単価</th>
@@ -110,17 +107,21 @@ export default function Detail({ no, onBack }: { no: number; onBack: () => void 
             return (
               <tr key={idx}>
                 <td>{i.hinmoku}</td>
-                <td>{i.siyou}</td>
-
-                <td className="text-right">{hide ? empty : i.suryo}</td>
-                <td>{i.tanni}</td>
 
                 <td className="text-right">
-                  {hide ? empty : "￥" + i.tannka.toLocaleString()}
+                  {i.suryo != null ? i.suryo : ""}
+                </td>
+
+                <td className="text-center">
+                  {i.tanni != null ? i.tanni : ""}
                 </td>
 
                 <td className="text-right">
-                  {hide ? empty : "￥" + i.kingaku.toLocaleString()}
+                  {i.tannka != null ? i.tannka.toLocaleString() : ""}
+                </td>
+
+                <td className="text-right">
+                  {i.kingaku != null ? i.kingaku.toLocaleString() : ""}
                 </td>
 
                 <td>{i.bikou}</td>

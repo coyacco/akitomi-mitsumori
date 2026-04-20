@@ -130,7 +130,7 @@ export default function App() {
             <th style={{ width: "120px" }}>見積書番号</th>
             <th style={{ width: "120px" }}>発行日付</th>
             <th>見積先</th>
-            <th style={{ width: "140px", textAlign: "right" }}>見積金額</th>
+            <th style={{ width: "140px" }}>見積金額</th>
           </tr>
         </thead>
 
@@ -141,9 +141,9 @@ export default function App() {
               onClick={() => setSelected(row.mitsumori_no)}
               className="list-row"
             >
-              <td>{row.mitsumori_no}</td>
+              <td style={{ textAlign: "center" }}>{row.mitsumori_no}</td>
 
-              <td>
+              <td style={{ textAlign: "center" }}>
                 {row.sakusei
                   ? new Date(row.sakusei).toLocaleDateString("ja-JP")
                   : ""}

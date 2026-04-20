@@ -91,6 +91,11 @@ button:active {
   text-align: right;
 }
 
+/* 単位は中央揃え */
+.text-center {
+  text-align: center;
+}
+
 /* ボタン（一覧と統一） */
 button {
   background: #fff;

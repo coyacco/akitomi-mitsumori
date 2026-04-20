@@ -221,7 +221,7 @@ async fn get_mitsumori_detail(Path(no): Path<i32>) -> Json<Vec<MitsumoriDetail>>
 
     let mut stmt = conn
         .prepare(
-            "SELECT hinmoku, siyou, suryo, tanni, tannka, kingaku, bikou
+            "SELECT hinmoku, suryo, tanni, tannka, kingaku, bikou
              FROM mitsumori_item
              WHERE mitsumori_no = ?",
         )
@@ -231,11 +231,11 @@ async fn get_mitsumori_detail(Path(no): Path<i32>) -> Json<Vec<MitsumoriDetail>>
         .query_map([no], |row| {
             Ok(MitsumoriDetail {
                 hinmoku: row.get::<_, String>(0)?,
-                suryo: row.get::<_, Option<f64>>(2).ok().flatten(),
-                tanni: row.get::<_, String>(3)?,
-                tannka: row.get::<_, Option<f64>>(4).ok().flatten(),
-                kingaku: row.get::<_, Option<f64>>(5).ok().flatten(),
-                bikou: row.get::<_, String>(6)?,
+                suryo: row.get::<_, Option<f64>>(1).ok().flatten(),
+                tanni: row.get::<_, String>(2)?,
+                tannka: row.get::<_, Option<f64>>(3).ok().flatten(),
+                kingaku: row.get::<_, Option<f64>>(4).ok().flatten(),
+                bikou: row.get::<_, String>(5)?,
             })
         })
         .unwrap();
@@ -403,7 +403,7 @@ fn load_detail(no: i32) -> Vec<MitsumoriDetail> {
 
     let mut stmt = conn
         .prepare(
-            "SELECT hinmoku, siyou, suryo, tanni, tannka, kingaku, bikou
+            "SELECT hinmoku, suryo, tanni, tannka, kingaku, bikou
              FROM mitsumori_item
              WHERE mitsumori_no = ?",
         )
@@ -413,12 +413,11 @@ fn load_detail(no: i32) -> Vec<MitsumoriDetail> {
         .query_map([no], |row| {
             Ok(MitsumoriDetail {
                 hinmoku: row.get::<_, String>(0)?,
-                // siyou は存在しないので削除
-                suryo: row.get::<_, Option<f64>>(2).ok().flatten(),
-                tanni: row.get::<_, String>(3)?,
-                tannka: row.get::<_, Option<f64>>(4).ok().flatten(),
-                kingaku: row.get::<_, Option<f64>>(5).ok().flatten(),
-                bikou: row.get::<_, String>(6)?,
+                suryo: row.get::<_, Option<f64>>(1).ok().flatten(),
+                tanni: row.get::<_, String>(2)?,
+                tannka: row.get::<_, Option<f64>>(3).ok().flatten(),
+                kingaku: row.get::<_, Option<f64>>(4).ok().flatten(),
+                bikou: row.get::<_, String>(5)?,
             })
         })
         .unwrap();
