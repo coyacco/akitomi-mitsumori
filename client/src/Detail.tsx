@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import EditForm from "./EditForm";
 
 interface Header {
   mitsumori_no: number;
@@ -6,6 +7,11 @@ interface Header {
   mitsumorisaki_meisho: string | null;
   keisho: string | null;
   goukei_kingaku: number | null;
+
+  torihiki_jouken: string | null;
+  yukou_kigen: string | null;
+  ukewatashi_kijitu: string | null;
+  ukewatashi_basho: string | null;
 }
 
 interface DetailRow {
@@ -21,6 +27,24 @@ export default function Detail({ no, onBack }: { no: number; onBack: () => void 
   const [header, setHeader] = useState<Header | null>(null);
   const [items, setItems] = useState<DetailRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mode, setMode] = useState<"view" | "edit">("view");
+
+  // ★★★ handleDelete をここに置く（Detail の中）
+  async function handleDelete() {
+    if (!window.confirm("この見積書を削除しますか？")) return;
+
+    try {
+      await fetch(`http://localhost:3001/api/mitsumori/${no}`, {
+        method: "DELETE",
+      });
+
+      alert("削除しました");
+      onBack(); // ← 一覧へ戻る
+    } catch (err) {
+      console.error("Delete error:", err);
+      alert("削除に失敗しました");
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -45,11 +69,35 @@ export default function Detail({ no, onBack }: { no: number; onBack: () => void 
     return <div style={{ padding: 20 }}>Loading...</div>;
   }
 
+  if (mode === "edit") {
+    return (
+      <EditForm
+        header={header}
+        items={items}
+        onCancel={() => setMode("view")}
+        onSaved={() => {
+          onBack();   // 保存後は一覧へ戻る
+        }}
+      />
+    );
+  }
+
   return (
     <div style={{ padding: 20 }}>
       <button onClick={onBack}>← 一覧へ戻る</button>
 
       <h2>見積書 詳細（No: {header.mitsumori_no}）</h2>
+
+      <button
+        onClick={() => setMode("edit")}
+        style={{ marginRight: 10 }}
+      >
+        編集
+      </button>
+
+      <button onClick={handleDelete} style={{ color: "red" }}>
+        削除
+      </button>
 
       {/* --- 見積ヘッダ --- */}
       <table className="detail-header-table">
@@ -75,10 +123,6 @@ export default function Detail({ no, onBack }: { no: number; onBack: () => void 
                 ? "￥" + header.goukei_kingaku.toLocaleString()
                 : ""}
             </td>
-          </tr>
-          <tr>
-            <th>備考</th>
-            <td></td>
           </tr>
         </tbody>
       </table>

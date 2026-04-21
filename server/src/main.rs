@@ -1,7 +1,7 @@
 use axum::{
     extract::{Path, Query},
     response::IntoResponse,
-    routing::get,
+    routing::{delete, get, post},
     Json, Router,
 };
 use rusqlite::{Connection, ToSql};
@@ -39,7 +39,7 @@ struct MitsumoriListResult {
     rows: Vec<MitsumoriListRow>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct MitsumoriHeader {
     pub mitsumori_no: i32,
     pub sakusei: Option<String>,
@@ -58,7 +58,7 @@ pub struct MitsumoriHeader {
     pub kaishain: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct MitsumoriDetail {
     pub hinmoku: String,
     pub suryo: Option<f64>,
@@ -79,6 +79,12 @@ pub struct MitsumoriCompany {
     pub mail: Option<String>,
     pub ginkou: Option<String>,
     pub mix: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct SaveRequest {
+    header: MitsumoriHeader,
+    items: Vec<MitsumoriDetail>,
 }
 
 async fn get_mitsumori_list(Query(q): Query<ListQuery>) -> Json<MitsumoriListResult> {
@@ -176,28 +182,49 @@ async fn get_mitsumori_header(Path(no): Path<i32>) -> Json<MitsumoriHeader> {
         )
         .unwrap();
 
-    let header = stmt
-        .query_row([no], |row| {
-            Ok(MitsumoriHeader {
-                mitsumori_no: row.get(0)?,
-                sakusei: row.get(1).ok(),
-                mitsumorisaki_meisho: row.get(2).ok(),
-                keisho: row.get(3).ok(),
-                goukei_kingaku: row.get(4).ok(),
+    let result = stmt.query_row([no], |row| {
+        Ok(MitsumoriHeader {
+            mitsumori_no: row.get(0)?,
+            sakusei: row.get(1).ok(),
+            mitsumorisaki_meisho: row.get(2).ok(),
+            keisho: row.get(3).ok(),
+            goukei_kingaku: row.get(4).ok(),
 
-                torihiki_jouken: row.get(5).ok(),
-                yukou_kigen: row.get(6).ok(),
-                ukewatashi_kijitu: row.get(7).ok(),
-                ukewatashi_basho: row.get(8).ok(),
+            torihiki_jouken: row.get(5).ok(),
+            yukou_kigen: row.get(6).ok(),
+            ukewatashi_kijitu: row.get(7).ok(),
+            ukewatashi_basho: row.get(8).ok(),
 
-                goukei: row.get(9).ok(),
-                sotozeigaku: row.get(10).ok(),
-                zeiritsu: row.get(11).ok(),
-                zei_type: row.get(12).ok(),
-                kaishain: row.get(13).ok(),
-            })
+            goukei: row.get(9).ok(),
+            sotozeigaku: row.get(10).ok(),
+            zeiritsu: row.get(11).ok(),
+            zei_type: row.get(12).ok(),
+            kaishain: row.get(13).ok(),
         })
-        .unwrap();
+    });
+
+    let header = match result {
+        Ok(h) => h,
+        Err(_) => {
+            // ★ 新規作成・削除済みでも panic しない
+            MitsumoriHeader {
+                mitsumori_no: no,
+                sakusei: None,
+                mitsumorisaki_meisho: None,
+                keisho: None,
+                goukei_kingaku: None,
+                torihiki_jouken: None,
+                yukou_kigen: None,
+                ukewatashi_kijitu: None,
+                ukewatashi_basho: None,
+                goukei: None,
+                sotozeigaku: None,
+                zeiritsu: None,
+                zei_type: None,
+                kaishain: None,
+            }
+        }
+    };
 
     Json(header)
 }
@@ -234,6 +261,141 @@ async fn get_mitsumori_detail(Path(no): Path<i32>) -> Json<Vec<MitsumoriDetail>>
     Json(list)
 }
 
+async fn create_mitsumori(Json(req): Json<SaveRequest>) -> impl IntoResponse {
+    let mut conn = Connection::open("data.db").unwrap();
+    let tx = conn.transaction().unwrap();
+
+    // --- 見積番号を採番（最大値 + 1） ---
+    let new_no: i32 = tx
+        .query_row(
+            "SELECT COALESCE(MAX(mitsumori_no), 0) + 1 FROM mitsumori",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+
+    // --- ヘッダー INSERT ---
+    tx.execute(
+        "INSERT INTO mitsumori (
+            mitsumori_no, sakusei, mitsumorisaki_meisho, keisho,
+            goukei_kingaku, torihiki_jouken, yukou_kigen,
+            ukewatashi_kijitu, ukewatashi_basho,
+            goukei, sotozeigaku, zeiritsu, zei_type, kaishain
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        rusqlite::params![
+            new_no,
+            req.header.sakusei,
+            req.header.mitsumorisaki_meisho,
+            req.header.keisho,
+            req.header.goukei_kingaku,
+            req.header.torihiki_jouken,
+            req.header.yukou_kigen,
+            req.header.ukewatashi_kijitu,
+            req.header.ukewatashi_basho,
+            req.header.goukei,
+            req.header.sotozeigaku,
+            req.header.zeiritsu,
+            req.header.zei_type,
+            req.header.kaishain,
+        ],
+    )
+    .unwrap();
+
+    // --- 明細 INSERT（stmt をブロックで囲んで drop させる） ---
+    {
+        let mut stmt = tx
+            .prepare(
+                "INSERT INTO mitsumori_item (
+                    mitsumori_no, hinmoku, suryo, tanni, tannka, kingaku, bikou
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            )
+            .unwrap();
+
+        for i in req.items {
+            stmt.execute(rusqlite::params![
+                new_no, i.hinmoku, i.suryo, i.tanni, i.tannka, i.kingaku, i.bikou,
+            ])
+            .unwrap();
+        }
+    }
+
+    tx.commit().unwrap();
+
+    Json(serde_json::json!({ "mitsumori_no": new_no }))
+}
+
+async fn update_mitsumori(Path(no): Path<i32>, Json(req): Json<SaveRequest>) -> impl IntoResponse {
+    let mut conn = Connection::open("data.db").unwrap();
+    let tx = conn.transaction().unwrap();
+
+    // --- ヘッダー UPDATE ---
+    tx.execute(
+        "UPDATE mitsumori SET
+            sakusei = ?, mitsumorisaki_meisho = ?, keisho = ?,
+            goukei_kingaku = ?, torihiki_jouken = ?, yukou_kigen = ?,
+            ukewatashi_kijitu = ?, ukewatashi_basho = ?,
+            goukei = ?, sotozeigaku = ?, zeiritsu = ?, zei_type = ?, kaishain = ?
+        WHERE mitsumori_no = ?",
+        rusqlite::params![
+            req.header.sakusei,
+            req.header.mitsumorisaki_meisho,
+            req.header.keisho,
+            req.header.goukei_kingaku,
+            req.header.torihiki_jouken,
+            req.header.yukou_kigen,
+            req.header.ukewatashi_kijitu,
+            req.header.ukewatashi_basho,
+            req.header.goukei,
+            req.header.sotozeigaku,
+            req.header.zeiritsu,
+            req.header.zei_type,
+            req.header.kaishain,
+            no,
+        ],
+    )
+    .unwrap();
+
+    // --- 明細 DELETE ---
+    tx.execute("DELETE FROM mitsumori_item WHERE mitsumori_no = ?", [no])
+        .unwrap();
+
+    // --- 明細 INSERT（stmt を drop させる） ---
+    {
+        let mut stmt = tx
+            .prepare(
+                "INSERT INTO mitsumori_item (
+                    mitsumori_no, hinmoku, suryo, tanni, tannka, kingaku, bikou
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            )
+            .unwrap();
+
+        for i in req.items {
+            stmt.execute(rusqlite::params![
+                no, i.hinmoku, i.suryo, i.tanni, i.tannka, i.kingaku, i.bikou,
+            ])
+            .unwrap();
+        }
+    }
+
+    tx.commit().unwrap();
+
+    Json(serde_json::json!({ "status": "ok" }))
+}
+
+async fn delete_mitsumori(Path(no): Path<i32>) -> impl IntoResponse {
+    let mut conn = Connection::open("data.db").unwrap();
+    let tx = conn.transaction().unwrap();
+
+    tx.execute("DELETE FROM mitsumori_item WHERE mitsumori_no = ?", [no])
+        .unwrap();
+    tx.execute("DELETE FROM mitsumori WHERE mitsumori_no = ?", [no])
+        .unwrap();
+
+    tx.commit().unwrap();
+
+    Json(serde_json::json!({ "status": "deleted" }))
+}
+
 // ----------------------
 // Axum 0.6 の安定サーバー起動
 // ----------------------
@@ -246,6 +408,9 @@ async fn main() {
         .route("/api/mitsumori/list", get(get_mitsumori_list))
         .route("/api/mitsumori/header/:no", get(get_mitsumori_header))
         .route("/api/mitsumori/detail/:no", get(get_mitsumori_detail))
+        .route("/api/mitsumori/create", post(create_mitsumori))
+        .route("/api/mitsumori/update/:no", post(update_mitsumori))
+        .route("/api/mitsumori/:no", delete(delete_mitsumori))
         .route("/api/pdf/:no", get(pdf_handler))
         .layer(cors);
 
@@ -365,50 +530,69 @@ async fn pdf_handler(Path(no): Path<i32>) -> impl IntoResponse {
 fn load_header(no: i32) -> MitsumoriHeader {
     let conn = Connection::open("data.db").unwrap();
 
-    let mut stmt = conn
-        .prepare(
-            "SELECT 
-                mitsumori_no,
-                sakusei,
-                mitsumorisaki_meisho,
-                keisho,
-                goukei_kingaku,
-                torihiki_jouken,
-                yukou_kigen,
-                ukewatashi_kijitu,
-                ukewatashi_basho,
-                goukei,
-                sotozeigaku,
-                zeiritsu,
-                zei_type,
-                kaishain
-             FROM mitsumori
-             WHERE mitsumori_no = ?",
-        )
-        .unwrap();
+    let mut stmt = conn.prepare(
+        "SELECT 
+            mitsumori_no,
+            sakusei,
+            mitsumorisaki_meisho,
+            keisho,
+            goukei_kingaku,
+            torihiki_jouken,
+            yukou_kigen,
+            ukewatashi_kijitu,
+            ukewatashi_basho,
+            goukei,
+            sotozeigaku,
+            zeiritsu,
+            zei_type,
+            kaishain
+         FROM mitsumori
+         WHERE mitsumori_no = ?"
+    ).unwrap();
 
-    stmt.query_row([no], |row| {
+    let result = stmt.query_row([no], |row| {
         Ok(MitsumoriHeader {
             mitsumori_no: row.get(0)?,
             sakusei: row.get(1).ok(),
             mitsumorisaki_meisho: row.get(2).ok(),
             keisho: row.get(3).ok(),
             goukei_kingaku: row.get(4).ok(),
-
             torihiki_jouken: row.get(5).ok(),
             yukou_kigen: row.get(6).ok(),
             ukewatashi_kijitu: row.get(7).ok(),
             ukewatashi_basho: row.get(8).ok(),
-
             goukei: row.get(9).ok(),
             sotozeigaku: row.get(10).ok(),
             zeiritsu: row.get(11).ok(),
             zei_type: row.get(12).ok(),
             kaishain: row.get(13).ok(),
         })
-    })
-    .unwrap()
+    });
+
+    match result {
+        Ok(h) => h,
+        Err(_) => {
+            // ★ 新規作成時・削除済み時でも panic しない
+            MitsumoriHeader {
+                mitsumori_no: no,
+                sakusei: None,
+                mitsumorisaki_meisho: None,
+                keisho: None,
+                goukei_kingaku: None,
+                torihiki_jouken: None,
+                yukou_kigen: None,
+                ukewatashi_kijitu: None,
+                ukewatashi_basho: None,
+                goukei: None,
+                sotozeigaku: None,
+                zeiritsu: None,
+                zei_type: None,
+                kaishain: None,
+            }
+        }
+    }
 }
+
 
 fn load_detail(no: i32) -> Vec<MitsumoriDetail> {
     let conn = Connection::open("data.db").unwrap();

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Detail from "./Detail";
+import EditForm from "./EditForm";
 import "./App.css";
 
 interface MitsumoriListRow {
@@ -23,6 +24,7 @@ export default function App() {
   const [selected, setSelected] = useState<number | null>(null);
   const [pageSize, setPageSize] = useState(10);
   const [searchClient, setSearchClient] = useState(""); // 検索語
+  const [creating, setCreating] = useState(false);
 
   // 検索語が変わったら page=0 に戻す
   useEffect(() => {
@@ -45,10 +47,42 @@ export default function App() {
     setData(json);
   }
 
+  if (creating) {
+    return (
+      <EditForm
+        header={{
+          mitsumori_no: 0,
+          sakusei: null,
+          mitsumorisaki_meisho: null,
+          keisho: null,
+          torihiki_jouken: null,
+          yukou_kigen: null,
+          ukewatashi_kijitu: null,
+          ukewatashi_basho: null,
+        }}
+        items={[]}
+        onCancel={() => setCreating(false)}
+        onSaved={() => {
+          setCreating(false);
+          fetchList();
+        }}
+      />
+    );
+  }
+
   // 詳細画面
   if (selected !== null) {
-    return <Detail no={selected} onBack={() => setSelected(null)} />;
+    return (
+      <Detail
+        no={selected}
+        onBack={() => {
+          setSelected(null);
+          fetchList();   // ★ 一覧を再読み込み
+        }}
+      />
+    );
   }
+
 
   if (!data) return <div>Loading...</div>;
 
@@ -57,6 +91,13 @@ export default function App() {
   return (
     <div style={{ padding: 20 }}>
       <h1>見積書一覧</h1>
+
+      <button
+        onClick={() => setCreating(true)}
+        style={{ marginBottom: 10 }}
+      >
+        ＋ 新規作成
+      </button>
 
       {/* ページング */}
       <div
