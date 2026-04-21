@@ -25,14 +25,11 @@ export default function Detail({ no, onBack }: { no: number; onBack: () => void 
   useEffect(() => {
     async function load() {
       try {
-        // --- Header ---
-        const h = await fetch(`http://localhost:3001/api/mitsumori/header/${no}`)
-          .then((res) => res.json());
+        const [h, d] = await Promise.all([
+          fetch(`http://localhost:3001/api/mitsumori/header/${no}`).then((r) => r.json()),
+          fetch(`http://localhost:3001/api/mitsumori/detail/${no}`).then((r) => r.json()),
+        ]);
         setHeader(h);
-
-        // --- Detail rows ---
-        const d = await fetch(`http://localhost:3001/api/mitsumori/detail/${no}`)
-          .then((res) => res.json());
         setItems(d);
       } catch (err) {
         console.error("Detail fetch error:", err);
@@ -81,7 +78,7 @@ export default function Detail({ no, onBack }: { no: number; onBack: () => void 
           </tr>
           <tr>
             <th>備考</th>
-            <td>{""}</td>
+            <td></td>
           </tr>
         </tbody>
       </table>
@@ -100,34 +97,16 @@ export default function Detail({ no, onBack }: { no: number; onBack: () => void 
         </thead>
 
         <tbody>
-          {items.map((i, idx) => {
-            const hide = i.suryo === 0 && (i.tannka === 0 || i.kingaku === 0);
-            const empty = <span style={{ opacity: 0 }}>0</span>;
-
-            return (
-              <tr key={idx}>
-                <td>{i.hinmoku}</td>
-
-                <td className="text-right">
-                  {i.suryo != null ? i.suryo : ""}
-                </td>
-
-                <td className="text-center">
-                  {i.tanni != null ? i.tanni : ""}
-                </td>
-
-                <td className="text-right">
-                  {i.tannka != null ? i.tannka.toLocaleString() : ""}
-                </td>
-
-                <td className="text-right">
-                  {i.kingaku != null ? i.kingaku.toLocaleString() : ""}
-                </td>
-
-                <td>{i.bikou}</td>
-              </tr>
-            );
-          })}
+          {items.map((i, idx) => (
+            <tr key={idx}>
+              <td>{i.hinmoku}</td>
+              <td className="text-right">{i.suryo ?? ""}</td>
+              <td className="text-center">{i.tanni ?? ""}</td>
+              <td className="text-right">{i.tannka?.toLocaleString() ?? ""}</td>
+              <td className="text-right">{i.kingaku?.toLocaleString() ?? ""}</td>
+              <td>{i.bikou}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

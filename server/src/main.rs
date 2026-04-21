@@ -1,21 +1,13 @@
-use axum::response::IntoResponse;
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, Query},
+    response::IntoResponse,
     routing::get,
     Json, Router,
 };
-use rusqlite::Connection;
-use rusqlite::ToSql;
+use rusqlite::{Connection, ToSql};
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
-use std::process::Command;
+use std::{net::SocketAddr, process::Command};
 use tower_http::cors::CorsLayer;
-
-// ----------------------
-// AppState（Axum 0.6 では必須）
-// ----------------------
-#[derive(Clone)]
-struct AppState;
 
 // =======================
 // データ構造
@@ -64,15 +56,6 @@ pub struct MitsumoriHeader {
     pub zeiritsu: Option<f64>,
     pub zei_type: Option<String>,
     pub kaishain: Option<String>,
-    // 自社情報
-    // pub yubin: Option<String>,
-    // pub jusho1: Option<String>,
-    // pub daihyou: Option<String>,
-    // pub tel: Option<String>,
-    // pub fax: Option<String>,
-    // pub mail: Option<String>,
-    // pub ginkou: Option<String>,
-    // pub mix: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -85,6 +68,7 @@ pub struct MitsumoriDetail {
     pub bikou: String,
 }
 
+// 自社情報
 #[derive(Serialize)]
 pub struct MitsumoriCompany {
     pub yubin: Option<String>,
@@ -97,10 +81,7 @@ pub struct MitsumoriCompany {
     pub mix: Option<String>,
 }
 
-async fn get_mitsumori_list(
-    State(_state): State<AppState>,
-    Query(q): Query<ListQuery>,
-) -> Json<MitsumoriListResult> {
+async fn get_mitsumori_list(Query(q): Query<ListQuery>) -> Json<MitsumoriListResult> {
     let page = q.page.unwrap_or(1);
     let size = q.page_size.unwrap_or(10);
     let offset = (page - 1) * size;
@@ -125,8 +106,13 @@ async fn get_mitsumori_list(
 
     // --- 一覧 SQL ---
     let mut list_sql = String::from(
-        "SELECT mitsumori_no, sakusei, mitsumorisaki_meisho, keisho, goukei_kingaku
-     FROM mitsumori",
+        "SELECT
+            mitsumori_no,
+            sakusei,
+            mitsumorisaki_meisho,
+            keisho,
+            goukei_kingaku
+        FROM mitsumori",
     );
 
     let mut params: Vec<Box<dyn ToSql>> = vec![];
@@ -254,8 +240,6 @@ async fn get_mitsumori_detail(Path(no): Path<i32>) -> Json<Vec<MitsumoriDetail>>
 
 #[tokio::main]
 async fn main() {
-    let state = AppState;
-
     let cors = CorsLayer::permissive();
 
     let app = Router::new()
@@ -263,7 +247,6 @@ async fn main() {
         .route("/api/mitsumori/header/:no", get(get_mitsumori_header))
         .route("/api/mitsumori/detail/:no", get(get_mitsumori_detail))
         .route("/api/pdf/:no", get(pdf_handler))
-        .with_state(state)
         .layer(cors);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
