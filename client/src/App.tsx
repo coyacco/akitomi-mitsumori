@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import Detail from "./Detail";
 import EditForm from "./EditForm";
+import ServerSettings from "./ServerSettings";
+import { loadServerAddress } from "./loadServerAddress";
 import "./App.css";
 
 interface MitsumoriListRow {
@@ -18,43 +20,116 @@ interface MitsumoriListResult {
 }
 
 export default function App() {
-  // Hooks
+  // -----------------------------
+  // Hooks はすべてここに集める（順番固定）
+  // -----------------------------
+  const [server, setServer] = useState<string | null>(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
+
   const [page, setPage] = useState(0);
   const [data, setData] = useState<MitsumoriListResult | null>(null);
   const [selectedNo, setSelectedNo] = useState<number | null>(null);
   const [pageSize, setPageSize] = useState(10);
-  const [searchClient, setSearchClient] = useState(""); // 検索語
+  const [searchClient, setSearchClient] = useState("");
   const [creating, setCreating] = useState(false);
   const [shainList, setShainList] = useState([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // 検索語が変わったら page=0 に戻す
+  // -----------------------------
+  // サーバー設定読み込み
+  // -----------------------------
   useEffect(() => {
-    setPage(0);
-  }, [searchClient/*, searchItem*/]);
-
-  useEffect(() => {
-    fetchList();
-  }, [page, pageSize, searchClient]);
-
-  useEffect(() => {
-    fetch("http://localhost:3001/api/shain")
-      .then((r) => r.json())
-      .then((data) => setShainList(data));
+    loadServerAddress().then((addr) => {
+      setServer(addr);
+      setConfigLoaded(true);
+    });
   }, []);
 
-  async function fetchList() {
-    const url =
-      `http://localhost:3001/api/mitsumori/list` +
-      `?page=${page + 1}` +
-      `&page_size=${pageSize}` +
-      `&search_client=${encodeURIComponent(searchClient)}`;
+  // -----------------------------
+  // 検索語が変わったら page=0
+  // -----------------------------
+  useEffect(() => {
+    setPage(0);
+  }, [searchClient]);
 
-    const res = await fetch(url);
-    const json = await res.json();
-    setData(json);
+  // -----------------------------
+  // 見積一覧取得
+  // -----------------------------
+  useEffect(() => {
+    if (!server) return;
+    fetchList();
+  }, [page, pageSize, searchClient, server]);
+
+  // -----------------------------
+  // 社員一覧取得
+  // -----------------------------
+  useEffect(() => {
+    if (!server) return;
+
+    fetch(`${server}/api/shain`)
+      .then((r) => {
+        if (!r.ok) throw new Error("Server error");
+        return r.json();
+      })
+      .then((data) => setShainList(data))
+      .catch((e) => {
+        console.error("shain fetch error:", e);
+        setErrorMessage("サーバーに接続できませんでした。設定を確認してください。");
+      });
+  }, [server]);
+
+  async function fetchList() {
+    if (!server) return;
+
+    try {
+      const url =
+        `${server}/api/mitsumori/list` +
+        `?page=${page + 1}` +
+        `&page_size=${pageSize}` +
+        `&search_client=${encodeURIComponent(searchClient)}`;
+
+      const res = await fetch(url);
+
+      if (!res.ok) {
+        throw new Error(`サーバーエラー: ${res.status}`);
+      }
+
+      const json = await res.json();
+      setData(json);
+    } catch (e: any) {
+      console.error("fetchList error:", e);
+      setErrorMessage("サーバーに接続できませんでした。設定を確認してください。");
+    }
   }
 
-  // 新規作成フォーム
+  if (errorMessage) {
+    return (
+      <div style={{ padding: 20 }}>
+        <h2 style={{ color: "red" }}>エラー</h2>
+        <p>{errorMessage}</p>
+
+        <button
+          onClick={() => {
+            setErrorMessage(null);
+            setServer(null); // ← 設定画面へ戻す
+          }}
+          style={{ marginTop: 20 }}
+        >
+          サーバー設定を開く
+        </button>
+      </div>
+    );
+  }
+
+  // -----------------------------
+  // ここから return（Hooks の後）
+  // -----------------------------
+  if (!configLoaded) return <div>Loading...</div>;
+
+  if (!server) {
+    return <ServerSettings onSaved={() => window.location.reload()} />;
+  }
+
   if (creating) {
     return (
       <EditForm
@@ -65,41 +140,36 @@ export default function App() {
           keisho: null,
           tantou: null,
           tantou_name: null,
-
           torihiki_jouken: null,
           yukou_kigen: null,
           ukewatashi_kijitu: null,
           ukewatashi_basho: null,
-
           goukei_kingaku: 0,
           goukei: 0,
           sotozeigaku: 0,
-
-          zeiritsu: null,   // ★ 新規作成時は後で会社マスタから取得
-          zei_type: 0,      // ★ 新規作成は外税
+          zeiritsu: null,
+          zei_type: 0,
           kaishain: null,
         }}
-
         items={[]}
         shainList={shainList}
         onCancel={() => setCreating(false)}
         onSaved={(no) => {
           setCreating(false);
-          setSelectedNo(no);   // ★ 詳細画面へ移動
+          setSelectedNo(no);
           fetchList();
         }}
       />
     );
   }
 
-  // 詳細画面
   if (selectedNo !== null) {
     return (
       <Detail
         no={selectedNo}
         onBack={() => {
           setSelectedNo(null);
-          fetchList();   // ★ 一覧を再読み込み
+          fetchList();
         }}
         onMove={(nextNo) => setSelectedNo(nextNo)}
       />
@@ -158,7 +228,7 @@ export default function App() {
           </button>
         </div>
 
-        {/* 🔍 検索ボックス（← select の直前に移動） */}
+        {/* 🔍 検索ボックス */}
         🔍<input
           type="text"
           placeholder="見積先で検索"
@@ -167,7 +237,7 @@ export default function App() {
           style={{ padding: 6, width: 200, marginRight: 10 }}
         />
 
-        {/* 右側：件数選択 */}
+        {/* 件数選択 */}
         <select
           value={pageSize}
           onChange={(e) => {

@@ -153,12 +153,12 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
         /> */}
         <button
           onClick={() => setMode("edit")}
-          style={{ marginRight: 10 }}
+          style={{ marginLeft: 10 }}
         >
           編集
         </button>
 
-        <button onClick={handleDelete} style={{ color: "red" }}>
+        <button onClick={handleDelete} style={{ color: "red", marginLeft: 10 }}>
           削除
         </button>
       </div>
