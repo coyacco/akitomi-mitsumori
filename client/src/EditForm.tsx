@@ -68,7 +68,7 @@ export default function EditForm({
       return items; // 既存データの編集
     }
 
-    // ★ 新規作成 → 30 行の空行を作る
+    // 新規作成 → 30 行の空行を作る
     return Array.from({ length: 30 }, () => ({
       hinmoku: "",
       suryo: null,
@@ -96,7 +96,7 @@ export default function EditForm({
           };
           setH(newHeader);
 
-          // ★ 初期化が終わった後に original をセット
+          // 初期化が終わった後に original をセット
           setOriginalHeader(newHeader);
           setOriginalRows(rows);
         });
@@ -191,7 +191,7 @@ export default function EditForm({
       return;
     }
 
-    // ★ 表示用の集計（保存には使わない）
+    // 表示用の集計（保存には使わない）
     const summary = calcSummary(rows, h.zeiritsu ?? 0, h.zei_type ?? 0);
     const subtotal = summary.subtotal ?? 0;
     const tax = summary.tax ?? 0;
@@ -203,9 +203,9 @@ export default function EditForm({
         goukei: subtotal,
         sotozeigaku: tax,
         goukei_kingaku: total,
-        zeiritsu: h.zeiritsu ?? 0,   // ★ null を許さない
+        zeiritsu: h.zeiritsu ?? 0,   // null を許さない
       },
-      items: rows,  // ★ input の kingaku をそのまま保存
+      items: rows,  // input の kingaku をそのまま保存
     };
 
     let mitsumoriNo = h.mitsumori_no;
@@ -239,9 +239,9 @@ export default function EditForm({
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>
+      <h1>
         {isNew ? "見積書 新規作成" : `見積書 編集`}
-      </h2>
+      </h1>
 
       <div style={{ marginBottom: 10 }}>
         <button onClick={save} style={{ marginRight: 10 }}>

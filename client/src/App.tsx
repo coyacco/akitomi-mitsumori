@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import Detail from "./Detail";
 import EditForm from "./EditForm";
 import ServerSettings from "./ServerSettings";
+import SettingsRoot from "./SettingsRoot";
+import CompanySettings from "./CompanySettings";
+import ShainSettings from "./ShainSettings";
 import { loadServerAddress } from "./loadServerAddress";
 import "./App.css";
 
@@ -34,6 +37,7 @@ export default function App() {
   const [creating, setCreating] = useState(false);
   const [shainList, setShainList] = useState([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [settingsPage, setSettingsPage] = useState<null | "root" | "company" | "shain">(null);
 
   // -----------------------------
   // サーバー設定読み込み
@@ -66,7 +70,7 @@ export default function App() {
   useEffect(() => {
     if (!server) return;
 
-    fetch(`${server}/api/shain`)
+    fetch(`${server}/api/shain/0`)
       .then((r) => {
         if (!r.ok) throw new Error("Server error");
         return r.json();
@@ -176,6 +180,35 @@ export default function App() {
     );
   }
 
+  if (settingsPage === "root") {
+    return (
+      <SettingsRoot
+        onSelect={(p) => setSettingsPage(p)}
+        onBack={() => {
+          setSettingsPage(null);
+        }}
+      />
+    );
+  }
+
+  if (settingsPage === "company") {
+    return (
+      <CompanySettings
+        server={server}
+        onBack={() => setSettingsPage("root")}
+      />
+    );
+  }
+
+  if (settingsPage === "shain") {
+    return (
+      <ShainSettings
+        server={server}
+        onBack={() => setSettingsPage("root")}
+      />
+    );
+  }
+
   if (!data) return <div>Loading...</div>;
 
   const totalPages = Math.max(1, Math.ceil(data.total / pageSize));
@@ -189,6 +222,13 @@ export default function App() {
         style={{ marginBottom: 10 }}
       >
         ＋ 新規作成
+      </button>
+
+      <button
+        onClick={() => setSettingsPage("root")}
+        style={{ marginBottom: 10, marginLeft: 10 }}
+      >
+        設定
       </button>
 
       {/* ページング */}

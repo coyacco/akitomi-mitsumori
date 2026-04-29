@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { displayTantou } from "./utils";
 import EditForm from "./EditForm";
-// import { useRef } from 'react';
 import PrintPreview from "./PrintPreview";
 import type { DetailHeader, DetailRow, MitsumoriCompany } from "./types";
 
@@ -11,11 +10,7 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
   const [company, setCompany] = useState<MitsumoriCompany | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<"view" | "edit" | "print">("view");
-  const [shainList, setShainList] = useState<{ shain_cd: string; name: string }[]>([]);
 
-  // const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  // ★★★ handleDelete をここに置く（Detail の中）
   async function handleDelete() {
     if (!window.confirm("この見積書を削除しますか？")) return;
 
@@ -32,7 +27,6 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
     }
   }
 
-  // ★★★ load() を共通化
   async function load() {
     setLoading(true);
     try {
@@ -53,13 +47,6 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
   useEffect(() => {
     load();
   }, [no]);
-
-  // 社員リスト読み込み
-  useEffect(() => {
-    fetch("http://localhost:3001/api/shain")
-      .then((r) => r.json())
-      .then((data) => setShainList(data));
-  }, []);
 
   if (loading || !header) {
     return <div style={{ padding: 20 }}>Loading...</div>;
@@ -86,40 +73,20 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
       <EditForm
         header={header}
         items={items}
-        shainList={shainList}
+        shainList={[]} // ← 社員リストも渡す（EditForm 内で選択できるように）
         onCancel={() => setMode("view")}
         onSaved={(no) => {
           setMode("view");  // 編集モード終了
           onMove(no);       // App に番号を渡す（Detail を再表示）
-          load();           // ★ 最新データを再取得（共通化した load を呼ぶ）
+          load();           // 最新データを再取得（共通化した load を呼ぶ）
         }}
       />
     );
   }
 
-  // function printPdf() {
-  //   const frame = iframeRef.current;
-  //   if (!frame) return;
-
-  //   frame.onload = () => {
-  //     frame.contentWindow?.print();
-  //   };
-
-  //   frame.src = `http://localhost:3001/api/pdf/${header.mitsumori_no}`;
-  // }
-
-  // function printPdf() {
-  //   iframeRef.current?.contentWindow?.print();
-  // }
-
-  // function printPdf() {
-  //   const url = `http://localhost:3001/api/pdf/${header!.mitsumori_no}`;
-  //   window.open(url, '_blank');
-  // }
-
   return (
     <div style={{ padding: 20 }}>
-      <h2 >見積書 詳細</h2>
+      <h1 >見積書 詳細</h1>
       {/* <button onClick={() => setMode("print")}>
         印刷プレビュー
       </button> */}
@@ -156,10 +123,6 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
           style={{ marginLeft: 10 }}
         >
           編集
-        </button>
-
-        <button onClick={handleDelete} style={{ color: "red", marginLeft: 10 }}>
-          削除
         </button>
       </div>
 
@@ -236,6 +199,11 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
           </tr>
         </tbody>
       </table>
+
+      <button onClick={handleDelete} style={{ color: "red", marginLeft: 10 }}>
+        削除
+      </button>
+
     </div>
   );
 }

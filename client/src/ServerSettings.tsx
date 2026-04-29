@@ -52,7 +52,7 @@ export default function ServerSettings({ onSaved }: { onSaved: () => void }) {
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>サーバー設定</h2>
+      <h1>サーバー設定</h1>
 
       {error && (
         <div style={{ color: "red", marginBottom: 10 }}>{error}</div>
