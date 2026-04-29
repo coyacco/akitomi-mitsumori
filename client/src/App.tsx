@@ -21,10 +21,11 @@ export default function App() {
   // Hooks
   const [page, setPage] = useState(0);
   const [data, setData] = useState<MitsumoriListResult | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selectedNo, setSelectedNo] = useState<number | null>(null);
   const [pageSize, setPageSize] = useState(10);
   const [searchClient, setSearchClient] = useState(""); // 検索語
   const [creating, setCreating] = useState(false);
+  const [shainList, setShainList] = useState([]);
 
   // 検索語が変わったら page=0 に戻す
   useEffect(() => {
@@ -34,6 +35,12 @@ export default function App() {
   useEffect(() => {
     fetchList();
   }, [page, pageSize, searchClient]);
+
+  useEffect(() => {
+    fetch("http://localhost:3001/api/shain")
+      .then((r) => r.json())
+      .then((data) => setShainList(data));
+  }, []);
 
   async function fetchList() {
     const url =
@@ -47,6 +54,7 @@ export default function App() {
     setData(json);
   }
 
+  // 新規作成フォーム
   if (creating) {
     return (
       <EditForm
@@ -55,15 +63,29 @@ export default function App() {
           sakusei: null,
           mitsumorisaki_meisho: null,
           keisho: null,
+          tantou: null,
+          tantou_name: null,
+
           torihiki_jouken: null,
           yukou_kigen: null,
           ukewatashi_kijitu: null,
           ukewatashi_basho: null,
+
+          goukei_kingaku: 0,
+          goukei: 0,
+          sotozeigaku: 0,
+
+          zeiritsu: null,   // ★ 新規作成時は後で会社マスタから取得
+          zei_type: 0,      // ★ 新規作成は外税
+          kaishain: null,
         }}
+
         items={[]}
+        shainList={shainList}
         onCancel={() => setCreating(false)}
-        onSaved={() => {
+        onSaved={(no) => {
           setCreating(false);
+          setSelectedNo(no);   // ★ 詳細画面へ移動
           fetchList();
         }}
       />
@@ -71,18 +93,18 @@ export default function App() {
   }
 
   // 詳細画面
-  if (selected !== null) {
+  if (selectedNo !== null) {
     return (
       <Detail
-        no={selected}
+        no={selectedNo}
         onBack={() => {
-          setSelected(null);
+          setSelectedNo(null);
           fetchList();   // ★ 一覧を再読み込み
         }}
+        onMove={(nextNo) => setSelectedNo(nextNo)}
       />
     );
   }
-
 
   if (!data) return <div>Loading...</div>;
 
@@ -168,8 +190,8 @@ export default function App() {
       <table className="list-table">
         <thead className="table-header">
           <tr>
-            <th style={{ width: "120px" }}>見積書番号</th>
-            <th style={{ width: "120px" }}>発行日付</th>
+            <th style={{ width: "80px" }}>No.</th>
+            <th style={{ width: "120px" }}>作成日</th>
             <th>見積先</th>
             <th style={{ width: "140px" }}>見積金額</th>
           </tr>
@@ -179,7 +201,7 @@ export default function App() {
           {data.rows.map((row) => (
             <tr
               key={row.mitsumori_no}
-              onClick={() => setSelected(row.mitsumori_no)}
+              onClick={() => setSelectedNo(row.mitsumori_no)}
               className="list-row"
             >
               <td style={{ textAlign: "center" }}>{row.mitsumori_no}</td>

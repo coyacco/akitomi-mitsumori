@@ -1,0 +1,157 @@
+.pp-root {
+    font-family: Noto Sans JP, sans-serif;
+    font-size: 12px;
+    color: black;
+}
+
+.pp-page {
+    width: 210mm;
+    height: 297mm;
+    padding: 10mm;
+}
+
+.pp-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: top;
+    margin-bottom: 4mm;
+}
+
+.pp-title {
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.pp-header-main {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4mm;
+}
+
+.pp-header-left {
+    padding-left: 4mm;
+    width: 50%;
+}
+
+.pp-header-right {
+    padding-top: 10mm;
+    width: 40%;
+}
+
+.pp-customer-name {
+    font-size: 18px;
+    border-bottom: 1px solid black;
+    text-align: center;
+}
+
+.pp-amount-box {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 16px;
+    border-bottom: 2px solid black;
+    margin-top: 4mm;
+    margin-bottom: 4mm;
+}
+
+.pp-amount-label {
+    font-size: 20px;
+}
+
+.pp-amount-value {
+    font-size: 28px;
+}
+
+.pp-terms-table {
+    border-collapse: collapse;
+    margin-bottom: 2mm;
+    width: 100%;
+}
+
+.pp-terms-table td {
+    font-size: 12px;
+    padding: 0;
+    vertical-align: bottom;
+}
+
+.pp-term-label {
+    width: 15mm;
+    /* font-weight: bold; */
+}
+
+.pp-term-value {
+    border-bottom: 1px solid gray;
+    height: 6mm;
+    padding-left: 2mm;
+}
+
+.pp-company-name {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 2mm;
+}
+
+.pp-kabu {
+  font-size: 20px;
+  margin-right: 2mm;
+}
+
+.pp-tel-fax {
+    display: flex;
+    gap: 12px;
+}
+
+.pp-torihiki-bank {
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+}
+
+.pp-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.pp-detail-table th,
+.pp-detail-table td {
+    border: 1px solid gray;
+    height: 6mm;
+    padding-left: 2mm;
+    font-size: 14px;
+    align-items: center;
+}
+
+.pp-text-center{
+    text-align: center;
+}
+
+.pp-text-left{
+    text-align: left;
+    padding-left: 2mm;
+}
+
+.pp-text-right{
+    text-align: right;
+    padding-right: 2mm;
+}
+
+.pp-note {
+  border: none !important;
+}
+
+@media print {
+    .pp-root {
+        margin: 0;
+        padding: 0;
+    }
+
+    .pp-page {
+        margin: 0;
+    }
+
+    @page {
+        size: A4 portrait;
+        margin: 0;
+    }
+}

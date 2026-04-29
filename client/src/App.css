@@ -6,8 +6,14 @@
 
 .list-table th,
 .list-table td {
-  border: 1px solid #ddd; /* ← 薄いグレーでモダン */
-  padding: 8px;
+  border: 1px solid #ddd;
+  padding: 6px;
+}
+
+.table-header {
+  background-color: #dde8f7;
+  border-bottom: 1px solid #a5bfe4;
+  font-weight: bold;
 }
 
 .list-row {
@@ -45,7 +51,7 @@ button {
 
 button:hover {
   background: #f5f5f5;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 button:active {
@@ -55,35 +61,36 @@ button:active {
 /* 詳細テーブル（ヘッダ情報） */
 .detail-header-table {
   border-collapse: collapse;
-  width: 100%;
+  width: 450px;
   margin-bottom: 20px;
 }
 
 .detail-header-table th,
 .detail-header-table td {
   border: 1px solid #ddd;
-  padding: 8px;
-  background: #fafafa;
+  padding: 4px;
   font-size: 14px;
 }
 
-/* 明細テーブル */
-.detail-table {
-  border-collapse: collapse;
+table.detail-header-table th {
+  width: 80px;
+  background-color: #dde8f7;
+}
+
+table.detail-header-table input {
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+/* 見積先は長いので幅広め */
+table.detail-header-table input.tokuisaki-input {
   width: 100%;
-  font-size: 14px;
 }
 
-.detail-table th,
-.detail-table td {
-  border: 1px solid #ddd;
-  padding: 6px 8px;
-  height: 28px; /* 行の高さを揃える */
-}
-
-/* ストライプ（やりすぎない薄さ） */
-.detail-table tr:nth-child(even) {
-  background-color: #fafafa;
+/* 敬称は短いので幅狭め */
+table.detail-header-table input.keisho-input {
+  width: 60px;
 }
 
 /* 金額・数量は右揃え */
@@ -108,7 +115,7 @@ button {
 
 button:hover {
   background: #f5f5f5;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 button:active {
@@ -119,20 +126,371 @@ button:disabled {
   background-color: #f5f5f5;
   border-color: #ccc;
   color: #aaa;
-  opacity: 1; /* 完全に上書き */
+  opacity: 1;
+  /* 完全に上書き */
 }
 
-.detail-table {
-  border-collapse: collapse;
-  width: 100%;
+/* Chrome / Edge / Safari のスピンボタンを消す */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
-.detail-table tbody tr:hover {
-  background-color: #f3f8ff;
-}
-
-.table-header th {
+table.table-header th {
   background-color: #dde8f7;
   border-bottom: 1px solid #a5bfe4;
   font-weight: bold;
+}
+
+/* --- 明細テーブル共通設定 --- */
+table.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+table.detail-table th,
+table.detail-table td {
+  border: 1px solid #ccc;
+  padding: 4px;
+  height: 16px;
+  vertical-align: middle;
+}
+
+table.detail-table th {
+  background-color: #dde8f7;
+}
+
+/* 明細テーブルの入力欄は最大化する */
+table.detail-table input {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+/* 数量・単価・金額の右寄せ */
+table.detail-table input.right {
+  text-align: right;
+}
+
+/* 単位の中央寄せ */
+table.detail-table input.center {
+  text-align: center;
+}
+
+/* ストライプ（やりすぎない薄さ） */
+table.detail-table tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+table.detail-table tbody tr:hover {
+  background-color: #f0f8ff;
+}
+
+/* --- 列幅（mm 指定）--- */
+
+/* 品名・仕様 */
+table.detail-table th:nth-child(1),
+table.detail-table td:nth-child(1) {
+  width: 110mm;
+}
+
+/* 数量 */
+table.detail-table th:nth-child(2),
+table.detail-table td:nth-child(2) {
+  width: 13mm;
+}
+
+/* 単位 */
+table.detail-table th:nth-child(3),
+table.detail-table td:nth-child(3) {
+  width: 10mm;
+}
+
+/* 単価 */
+table.detail-table th:nth-child(4),
+table.detail-table td:nth-child(4) {
+  width: 20mm;
+}
+
+/* 金額 */
+table.detail-table th:nth-child(5),
+table.detail-table td:nth-child(5) {
+  width: 23mm;
+}
+
+/* 備考 */
+table.detail-table th:nth-child(6),
+table.detail-table td:nth-child(6) {
+  width: 40mm;
+}
+
+/* 備考 */
+table.detail-table th:nth-child(7),
+table.detail-table td:nth-child(7) {
+  width: 16mm;
+}
+
+table.detail-table input:focus {
+  border: 1px solid #7ab6f9;
+  /* 薄いブルーの枠線 */
+  outline: none;
+  /* 黒いアウトラインを消す */
+  background-color: #eef7ff;
+  /* 入力中の背景色（任意） */
+}
+
+.no-border {
+  border: none !important;
+}
+
+.summary-label {
+  background-color: #dde8f7;
+  border-bottom: 1px solid #a5bfe4;
+  font-weight: bold;
+  text-align: center;
+}
+
+
+
+
+
+/* .print-root {
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+
+.report-page {
+  width: 210mm;
+  height: 297mm;
+  margin: 0 auto;
+  padding: 12mm;
+  background: white;
+  box-sizing: border-box;
+  font-size: 12px;
+}
+
+.title-area {
+  text-align: center;
+  margin-bottom: 10mm;
+}
+
+.title-area h1 {
+  font-size: 24px;
+  margin: 0;
+  letter-spacing: 4px;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8mm;
+}
+
+.customer-area {
+  width: 55%;
+}
+
+.company-area {
+  width: 35%;
+  text-align: right;
+  font-size: 11px;
+}
+
+.customer-name {
+  font-size: 18px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #000;
+  padding-bottom: 4px;
+}
+
+.info-box {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8mm;
+}
+
+.amount-box {
+  border: 2px solid #000;
+  padding: 8px;
+  font-size: 20px;
+  text-align: center;
+  margin-bottom: 10mm;
+  font-weight: bold;
+}
+
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 8mm;
+}
+
+.detail-table th,
+.detail-table td {
+  border: 1px solid #000;
+  padding: 6px;
+  height: 28px;
+}
+
+.footer-total {
+  text-align: right;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.text-right {
+  text-align: right;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    margin: 0;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+} */
+
+.report-page {
+  width: 210mm;
+  height: 297mm;
+  padding: 10mm;
+  box-sizing: border-box;
+  background: white;
+  font-size: 12px;
+}
+
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8mm;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: bold;
+  letter-spacing: 4px;
+}
+
+.header-main {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8mm;
+}
+
+.left-info {
+  width: 55%;
+}
+
+.right-company {
+  width: 35%;
+  text-align: left;
+  position: relative;
+}
+
+.customer-name {
+  font-size: 20px;
+  border-bottom: 1px solid black;
+  margin-bottom: 5mm;
+  padding-bottom: 1mm;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.amount-box {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 16px;
+
+  border-bottom: 2px solid black;
+  padding: 4px 0;
+  margin-bottom: 5mm;
+}
+
+.amount-label {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.amount-value {
+  font-size: 20px;
+  font-weight: bold;
+  line-height: 1.3;
+}
+
+.terms-box {
+  margin-top: 4mm;
+}
+
+.term-row {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  margin-bottom: 2px;
+  padding-left: 12px;
+}
+
+/* .term-label {
+  width: 70px;
+  font-weight: bold;
+  flex-shrink: 0;
+  line-height: 1.1;
+}
+
+.term-value {
+  flex: 1;
+  padding-left: 6px;
+  border-bottom: 1.5px solid black;
+  min-height: 18px;
+  line-height: 1.1;
+} */
+
+/* .detail-table2 {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.detail-table2 tbody tr {
+  height: 6mm;
+}
+
+.detail-table2 th,
+.detail-table2 td {
+  border: 1px solid black;
+  padding: 0 0px;
+  font-size: 9px;
+  line-height: 1;
+  vertical-align: middle;
+} */
+
+.total-label {
+  text-align: right;
+  font-weight: bold;
+}
+
+.total-value {
+  font-weight: bold;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  body {
+    margin: 0;
+  }
 }
