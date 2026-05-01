@@ -128,3 +128,18 @@ cargo build --release
 inno setupをインストール
 copy .\target\release\akitomi-server.exe .\installer
 
+## 使用したインストーラー
+Inno Setup
+https://jrsoftware.org/isinfo.php
+
+## SQLite DBの確認と編集
+DB Browser for SQLite
+https://sqlitebrowser.org/
+
+## アイコン画像編集
+Gimp
+https://www.gimp.org/
+
+## バージョ管理
+GitHub
+https://github.com/coyacco/akitomi-mitsumori/

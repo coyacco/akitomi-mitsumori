@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/1",
-  "productName": "Akitomi 見積書",
+  "productName": "AkitomiMitsumori",
   "version": "1.0.0",
   "identifier": "com.coyacco.akitomi-app",
   "build": {
@@ -34,7 +34,14 @@
     ],
     "windows": {
       "nsis": {
-        "languages": ["Japanese"]
+        "languages": [
+          "Japanese"
+        ]
+      },
+      "wix": {
+        "language": [
+          "ja-JP"
+        ]
       }
     }
   }
