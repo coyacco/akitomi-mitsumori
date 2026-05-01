@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/1",
-  "productName": "akitomi-mitsumori-viewer",
-  "version": "0.1.0",
+  "productName": "Akitomi 見積書",
+  "version": "1.0.0",
   "identifier": "com.coyacco.akitomi-app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "見積書 閲覧",
+        "title": "秋富商店 見積書",
         "width": 1100,
         "height": 800,
         "resizable": true
@@ -31,6 +31,11 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "languages": ["Japanese"]
+      }
+    }
   }
 }

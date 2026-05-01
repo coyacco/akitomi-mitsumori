@@ -1,7 +1,7 @@
 [package]
-name = "akitomi-mitsumori-viewer"
+name = "akitomi-mitsumori"
 version = "0.1.0"
-description = "akitomi mitsumori viewer"
+description = "akitomi mitsumori"
 authors = ["coyacco"]
 edition = "2021"
 

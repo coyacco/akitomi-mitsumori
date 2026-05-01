@@ -75,7 +75,7 @@ export default function ShainSettings({ server, onBack }: { server: string; onBa
                     <tr>
                         <th>コード</th>
                         <th>名前</th>
-                        <th>表示</th>
+                        <th>作成</th>
                     </tr>
                 </thead>
 

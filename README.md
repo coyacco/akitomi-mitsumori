@@ -119,3 +119,12 @@ http://localhost:1420/
 - PDF 出力機能  
 - 検索条件の保存  
 - UI の細部調整（行高さ、mm 単位の調整など）  
+
+
+
+# メモ
+## サーバインストーラーの作成
+cargo build --release
+inno setupをインストール
+copy .\target\release\akitomi-server.exe .\installer
+

@@ -8,7 +8,9 @@ use axum::{
 use rusqlite::{Connection, ToSql};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
+use std::env;
 use tower_http::cors::CorsLayer;
+
 
 #[derive(Deserialize)]
 struct ListQuery {
@@ -115,8 +117,87 @@ struct ShainVisibleRequest {
     hide: bool,
 }
 
-#[tokio::main]
-async fn main() {
+use std::ffi::OsString;
+use std::sync::{Arc, Mutex, OnceLock};
+use tokio::sync::oneshot;
+
+use windows_service::{
+    define_windows_service,
+    service::{
+        ServiceControl, ServiceControlAccept, ServiceExitCode, ServiceState, ServiceStatus,
+        ServiceType,
+    },
+    service_control_handler::{self, ServiceControlHandlerResult},
+    service_dispatcher,
+};
+
+static SHUTDOWN_TX: OnceLock<Arc<Mutex<Option<oneshot::Sender<()>>>>> = OnceLock::new();
+
+const SERVICE_NAME: &str = "AkitomiServer";
+
+define_windows_service!(ffi_service_main, my_service_main);
+
+fn my_service_main(_arguments: Vec<OsString>) {
+    if let Err(e) = run_service() {
+        std::fs::write("C:\\AkitomiServer\\service_error.log", format!("{:?}", e)).ok();
+    }
+}
+
+fn run_service() -> windows_service::Result<()> {
+    let (tx, rx) = oneshot::channel();
+    SHUTDOWN_TX.set(Arc::new(Mutex::new(Some(tx)))).ok();
+
+    // ステータス更新のために handle を取得。Arcで共有してクロージャ内でも使えるようにします
+    let status_handle =
+        service_control_handler::register(
+            SERVICE_NAME,
+            move |control_event| match control_event {
+                ServiceControl::Stop => {
+                    // 1. SCMに「停止中(STOP_PENDING)」を報告
+                    // 本来はここでも status_handle を使って更新するのが理想ですが、
+                    // 最低限、メインループ側で受信してすぐ更新すればOKです。
+
+                    if let Some(lock) = SHUTDOWN_TX.get() {
+                        if let Some(sender) = lock.lock().unwrap().take() {
+                            let _ = sender.send(());
+                        }
+                    }
+                    ServiceControlHandlerResult::NoError
+                }
+                _ => ServiceControlHandlerResult::NotImplemented,
+            },
+        )?;
+
+    // サービス開始を通知
+    status_handle.set_service_status(ServiceStatus {
+        service_type: ServiceType::OWN_PROCESS,
+        current_state: ServiceState::Running, // 稼働中
+        controls_accepted: ServiceControlAccept::STOP,
+        exit_code: ServiceExitCode::Win32(0),
+        checkpoint: 0,
+        wait_hint: std::time::Duration::default(),
+        process_id: None,
+    })?;
+
+    // Axum サーバ起動 (ここが終了するまでブロックされる)
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(start_axum_server_with_shutdown(rx));
+
+    // 2. サーバーが終了したら、SCMに「停止完了(STOPPED)」を報告
+    status_handle.set_service_status(ServiceStatus {
+        service_type: ServiceType::OWN_PROCESS,
+        current_state: ServiceState::Stopped, // ここが重要！
+        controls_accepted: ServiceControlAccept::empty(),
+        exit_code: ServiceExitCode::Win32(0),
+        checkpoint: 0,
+        wait_hint: std::time::Duration::default(),
+        process_id: None,
+    })?;
+
+    Ok(())
+}
+
+async fn start_axum_server_with_shutdown(rx: oneshot::Receiver<()>) {
     let cors = CorsLayer::permissive();
 
     let app = Router::new()
@@ -137,12 +218,40 @@ async fn main() {
         .layer(cors);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
-    println!("Server running on http://{}...", addr);
 
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
+        .with_graceful_shutdown(async {
+            rx.await.ok();
+        })
         .await
         .unwrap();
+}
+
+#[tokio::main]
+async fn main() -> windows_service::Result<()> {
+    if std::env::args().any(|a| a == "--service") {
+        service_dispatcher::start(SERVICE_NAME, ffi_service_main)?;
+    } else {
+        // 開発用
+        let (_tx, rx) = oneshot::channel();
+        start_axum_server_with_shutdown(rx).await;
+    }
+    Ok(())
+}
+
+fn get_db_path() -> String {
+    // 1. 実行ファイル (.exe) のフルパスを取得
+    let mut exe_path = env::current_exe().expect("Failed to get current exe path");
+    
+    // 2. ファイル名を除去して、親ディレクトリ (フォルダ) だけにする
+    exe_path.pop(); 
+    
+    // 3. そのフォルダに DB ファイル名を結合
+    // 例: "C:\AnyPath\AkitomiServer\database.db"
+    exe_path.push("data.db"); 
+    
+    exe_path.to_string_lossy().into_owned()
 }
 
 async fn get_mitsumori_list(Query(q): Query<ListQuery>) -> Json<MitsumoriListResult> {
@@ -150,7 +259,7 @@ async fn get_mitsumori_list(Query(q): Query<ListQuery>) -> Json<MitsumoriListRes
     let size = q.page_size.unwrap_or(10);
     let offset = (page - 1) * size;
 
-    let conn = rusqlite::Connection::open("data.db").unwrap();
+    let conn = rusqlite::Connection::open(get_db_path()).unwrap();
 
     // --- 総件数 ---
     let mut total_sql = String::from("SELECT COUNT(*) FROM mitsumori");
@@ -216,7 +325,7 @@ async fn get_mitsumori_list(Query(q): Query<ListQuery>) -> Json<MitsumoriListRes
 }
 
 async fn get_mitsumori_header(Path(no): Path<i32>) -> Json<MitsumoriHeader> {
-    let conn = Connection::open("data.db").unwrap();
+    let conn = Connection::open(get_db_path()).unwrap();
 
     let mut stmt = conn
         .prepare(
@@ -291,7 +400,7 @@ async fn get_mitsumori_header(Path(no): Path<i32>) -> Json<MitsumoriHeader> {
 }
 
 async fn get_mitsumori_detail(Path(no): Path<i32>) -> Json<Vec<MitsumoriDetail>> {
-    let conn = Connection::open("data.db").unwrap();
+    let conn = Connection::open(get_db_path()).unwrap();
 
     let mut stmt = conn
         .prepare(
@@ -323,7 +432,7 @@ async fn get_mitsumori_detail(Path(no): Path<i32>) -> Json<Vec<MitsumoriDetail>>
 }
 
 async fn create_mitsumori(Json(req): Json<SaveRequest>) -> impl IntoResponse {
-    let mut conn = Connection::open("data.db").unwrap();
+    let mut conn = Connection::open(get_db_path()).unwrap();
     let tx = conn.transaction().unwrap();
 
     // --- 見積番号を採番（最大値 + 1） ---
@@ -387,7 +496,7 @@ async fn create_mitsumori(Json(req): Json<SaveRequest>) -> impl IntoResponse {
 }
 
 async fn update_mitsumori(Path(no): Path<i32>, Json(req): Json<SaveRequest>) -> impl IntoResponse {
-    let mut conn = Connection::open("data.db").unwrap();
+    let mut conn = Connection::open(get_db_path()).unwrap();
     let tx = conn.transaction().unwrap();
 
     // --- ヘッダー UPDATE ---
@@ -446,7 +555,7 @@ async fn update_mitsumori(Path(no): Path<i32>, Json(req): Json<SaveRequest>) -> 
 }
 
 async fn delete_mitsumori(Path(no): Path<i32>) -> impl IntoResponse {
-    let mut conn = Connection::open("data.db").unwrap();
+    let mut conn = Connection::open(get_db_path()).unwrap();
     let tx = conn.transaction().unwrap();
 
     tx.execute("DELETE FROM mitsumori_item WHERE mitsumori_no = ?", [no])
@@ -465,7 +574,7 @@ async fn get_mitsumori_company() -> Result<Json<MitsumoriCompany>, StatusCode> {
 }
 
 async fn get_shain_list(Path(all): Path<i32>) -> Json<Vec<Shain>> {
-    let conn = Connection::open("data.db").unwrap();
+    let conn = Connection::open(get_db_path()).unwrap();
 
     let sql = if all == 1 {
         "SELECT shain_CD, name, hide FROM shain ORDER BY shain_CD"
@@ -494,7 +603,7 @@ async fn get_shain_list(Path(all): Path<i32>) -> Json<Vec<Shain>> {
 }
 
 async fn add_shain(Json(req): Json<Shain>) -> impl IntoResponse {
-    let conn = Connection::open("data.db").unwrap();
+    let conn = Connection::open(get_db_path()).unwrap();
 
     // 文字列を数値に変換して採番する
     let new_code: String = {
@@ -517,7 +626,7 @@ async fn add_shain(Json(req): Json<Shain>) -> impl IntoResponse {
 }
 
 async fn update_shain_visible(Json(req): Json<ShainVisibleRequest>) -> impl IntoResponse {
-    let conn = Connection::open("data.db").unwrap();
+    let conn = Connection::open(get_db_path()).unwrap();
 
     conn.execute(
         "UPDATE shain SET hide = ?1 WHERE shain_CD = ?2",
@@ -529,7 +638,7 @@ async fn update_shain_visible(Json(req): Json<ShainVisibleRequest>) -> impl Into
 }
 
 fn load_company() -> MitsumoriCompany {
-    let conn = Connection::open("data.db").unwrap();
+    let conn = Connection::open(get_db_path()).unwrap();
 
     let mut stmt = conn
         .prepare(
@@ -569,7 +678,7 @@ fn load_company() -> MitsumoriCompany {
 }
 
 async fn update_mitsumori_company(Json(req): Json<MitsumoriCompany>) -> impl IntoResponse {
-    let mut conn = Connection::open("data.db").unwrap();
+    let mut conn = Connection::open(get_db_path()).unwrap();
     let tx = conn.transaction().unwrap();
 
     tx.execute(

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { readTextFile, writeTextFile, mkdir, exists } from "@tauri-apps/plugin-fs";
 import { appConfigDir, join } from "@tauri-apps/api/path";
 
 export default function ServerSettings({ onSaved }: { onSaved: () => void }) {
@@ -39,13 +39,23 @@ export default function ServerSettings({ onSaved }: { onSaved: () => void }) {
       const dir = await appConfigDir();
       const path = await join(dir, "server-config.json");
 
+      // --- ここが重要：フォルダが存在するか確認し、なければ作成する ---
+      const dirExists = await exists(dir);
+      if (!dirExists) {
+        // recursive: true を指定すると、親フォルダを含めて作成してくれます
+        await mkdir(dir, { recursive: true });
+      }
+      // ---------------------------------------------------------
+
       await writeTextFile(
         path,
         JSON.stringify({ server: serverUrl }, null, 2)
       );
 
+      setError(null);
       onSaved();
     } catch (e) {
+      console.error(e);
       setError("設定の保存に失敗しました");
     }
   }
@@ -67,7 +77,7 @@ export default function ServerSettings({ onSaved }: { onSaved: () => void }) {
       />
 
       <div style={{ marginTop: 10, color: "#555" }}>
-        接続先：<b>http://{ip || "___" }:3001</b>
+        接続先：<b>http://{ip || "___"}:3001</b>
       </div>
 
       <button onClick={save} style={{ marginTop: 20 }}>

@@ -30,7 +30,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "akitomi-mitsumori-viewer"
+name = "akitomi-mitsumori"
 version = "0.1.0"
 dependencies = [
  "rusqlite",

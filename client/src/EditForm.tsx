@@ -329,9 +329,9 @@ export default function EditForm({
               <input
                 className="keisho-input"
                 type="text"
-                value={h.keisho ?? ""}
+                value={h.keisho ?? "様"}
                 onChange={(e) => setH({ ...h, keisho: e.target.value })}
-                placeholder="御中"
+                placeholder="様、御中など"
               />
             </td>
           </tr>
