@@ -1,3 +1,5 @@
+#define ServerVersion "1.0.0"
+
 [Setup]
 AppName=Akitomi 見積書サーバ
 AppVersion=2026.1
@@ -7,7 +9,7 @@ DefaultGroupName=AkitomiServer
 UninstallDisplayIcon={app}\akitomi-server.exe
 Compression=lzma2
 SolidCompression=yes
-OutputBaseFilename=AkitomiServer_Setup
+OutputBaseFilename=AkitomiMitsumori-Server_{#ServerVersion}-setup
 ; 管理者権限を必須にする（scコマンドの実行に必要）
 PrivilegesRequired=admin
 
