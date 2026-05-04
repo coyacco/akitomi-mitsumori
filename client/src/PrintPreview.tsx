@@ -120,9 +120,9 @@ export default function PrintPreview({
                             </tr>
                         ))}
 
-                        {/* 最低20行になるように空行を追加 */}
+                        {/* 最低30行になるように空行を追加 */}
                         {Array.from({
-                            length: Math.max(0, 20 - items.length),
+                            length: Math.max(0, 30 - items.length),
                         }).map((_, idx) => (
                             <tr key={`empty-${idx}`}>
                                 <td>&nbsp;</td>
