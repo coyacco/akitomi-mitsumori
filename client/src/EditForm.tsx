@@ -479,7 +479,7 @@ export default function EditForm({
 
               <td>
                 <input
-                  value={r.bikou}
+                  value={r.bikou || ""}
                   onChange={(e) =>
                     updateRow(idx, "bikou", e.target.value)
                   }
