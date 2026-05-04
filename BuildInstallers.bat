@@ -4,23 +4,34 @@ chcp 65001 > nul
 
 setlocal
 
+echo "==== START Client ===="
 pushd client
 :: クライアントをビルド
 call npm install
 call npm run tauri build
-echo "==== Client installer created. ===="
-echo ".\client\src-tauri\target\release\akitomi-mitsumori.exe"
 popd
+echo "==== END Client ===="
 
+echo "==== START Server ===="
 pushd server
 :: Rustサーバをビルド
 call cargo build --release
 
 :: バッチファイルがある場所を基準にパスを設定
 set BUILD_DIR=%CD%
-set ISCC="C:\Users\coyac\AppData\Local\Programs\Inno Setup 6\ISCC.exe"
+set ISCC=C:\Program Files (x86)\Inno Setup 6\ISCC.exe
 
-%ISCC% "%BUILD_DIR%\akitomi-server-installer.iss"
-echo "==== Server installer created. ===="
+if not exist "%ISCC%" (
+  echo ERROR: "%ISCC%" is not exist.
+  goto :server_error
+)
+if not exist "%BUILD_DIR%\akitomi-server-installer.iss" (
+  echo ERROR: "%BUILD_DIR%\akitomi-server-installer.iss" is not exist.
+  goto :server_error
+)
+"%ISCC%" "%BUILD_DIR%\akitomi-server-installer.iss"
+echo "==== END Server ===="
+
+:server_error
 
 popd
