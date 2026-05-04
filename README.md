@@ -123,6 +123,21 @@ http://localhost:1420/
 
 
 # メモ
+## バージョン管理
+GitHub
+
+## プロジェクトの取得
+https://github.com/coyacco/akitomi-mitsumori/
+
+## 開発環境構築
+
+1. Rustをインストール
+    - https://www.rust-lang.org/tools/install
+1. Node.js（LTS 推奨）をインストール
+    - https://nodejs.org/
+1. Tauri v2 CLI
+    - コマンドプロンプトから cargo install tauri-cli を実行する
+
 ## サーバインストーラーの作成
 cargo build --release
 inno setupをインストール
@@ -140,6 +155,4 @@ https://sqlitebrowser.org/
 Gimp
 https://www.gimp.org/
 
-## バージョ管理
-GitHub
-https://github.com/coyacco/akitomi-mitsumori/
+
