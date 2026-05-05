@@ -33,7 +33,7 @@ React（フロントエンド）と Rust（Axum / SQLite）を使用し、
 ### ステップ 1: サーバーインストーラーをダウンロード
 
 1. [Releases](https://github.com/coyacco/akitomi-mitsumori/releases) ページにアクセス
-2. サーバーインストーラー（`akitomi-server-installer.exe` など）をダウンロード
+2. サーバーインストーラー（`AkitomiMitsumori-Server_X.X.X-setup.exe`）をダウンロード
 
 ### ステップ 2: サーバーをインストール
 
@@ -63,7 +63,7 @@ React（フロントエンド）と Rust（Axum / SQLite）を使用し、
 
 ### ステップ 4: クライアントインストーラーをダウンロード
 
-1. [Releases](https://github.com/coyacco/akitomi-mitsumori/releases) ページから、クライアントインストーラー（`akitomi-client-installer.exe` など）をダウンロード
+1. [Releases](https://github.com/coyacco/akitomi-mitsumori/releases) ページから、クライアントインストーラー（`AkitomiMitsumori_X.X.X_x64-setup.exe`）をダウンロード
 
 ### ステップ 5: クライアントをインストール
 
