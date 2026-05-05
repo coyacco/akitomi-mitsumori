@@ -1,4 +1,4 @@
-# 📘 README.md（更新版）
+# README.md（更新版）
 
 ## 見積書管理システム
 
@@ -17,7 +17,7 @@ React（フロントエンド）と Rust（Axum / SQLite）を使用し、
 
 ---
 
-# 🚀 開発環境セットアップ
+# 開発環境セットアップ
 
 ## 1. Rust / Axum API サーバーの起動手順（開発時）
 
@@ -63,14 +63,14 @@ http://localhost:1420/
 
 ---
 
-# 🗄 データベース
+# データベース
 - SQLite を使用  
 - `data.db` を `server/` と同階層に配置  
 - 初期テーブル：`mitsumori`, `mitsumori_detail`, `shain`
 
 ---
 
-# 📡 API 一覧
+# API 一覧
 
 ## 見積書ヘッダ
 - `GET /api/mitsumori/header/:no`  
@@ -88,7 +88,7 @@ http://localhost:1420/
 
 ---
 
-# 🔧 今後の改善タスク（見積書 詳細画面）
+# 今後の改善タスク（見積書 詳細画面）
 
 ### 詳細画面の前後移動機能
 - [ ] 存在しない番号をスキップする  
@@ -105,7 +105,7 @@ http://localhost:1420/
 
 ---
 
-# 📝 リリースノート
+# リリースノート
 
 ## v0.1.0
 - 見積書一覧・詳細・編集の基本機能を実装  
@@ -154,5 +154,4 @@ https://sqlitebrowser.org/
 ## アイコン画像編集
 Gimp
 https://www.gimp.org/
-
 
