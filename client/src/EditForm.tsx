@@ -43,12 +43,14 @@ export default function EditForm({
   shainList,
   onCancel,
   onSaved,
+  isDuplicate,
 }: {
   header: Header;
   items: DetailRow[];
   shainList: { shain_cd: string; name: string }[];
   onCancel: () => void;
   onSaved: (no: number) => void;
+  isDuplicate?: boolean;
 }) {
   const isNew = header.mitsumori_no === 0;
 
@@ -346,10 +348,16 @@ export default function EditForm({
 
   const { subtotal, tax, total } = calcSummary(rows, h.zeiritsu ?? 0, h.zei_type ?? 1);
 
+  // 見出しを決定
+  let heading = "見積書 編集";
+  if (isNew) {
+    heading = isDuplicate ? "見積書 複製" : "見積書 新規作成";
+  }
+
   return (
     <div style={{ padding: 20 }}>
       <h1>
-        {isNew ? "見積書 新規作成" : `見積書 編集`}
+        {heading}
       </h1>
 
       <div style={{ marginBottom: 10 }}>
