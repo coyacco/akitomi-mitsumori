@@ -9,7 +9,8 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
   const [items, setItems] = useState<DetailRow[]>([]);
   const [company, setCompany] = useState<MitsumoriCompany | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<"view" | "edit" | "print">("view");
+  const [mode, setMode] = useState<"view" | "edit" | "duplicate" | "print">("view");
+  const [shainList, setShainList] = useState<{ shain_cd: string; name: string }[]>([]);
 
   async function handleDelete() {
     if (!window.confirm("この見積書を削除しますか？")) return;
@@ -30,14 +31,20 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
   async function load() {
     setLoading(true);
     try {
-      const [h, d, c] = await Promise.all([
+      const [h, d, c, s] = await Promise.all([
         fetch(`http://localhost:3001/api/mitsumori/header/${no}`).then((r) => r.json()),
         fetch(`http://localhost:3001/api/mitsumori/detail/${no}`).then((r) => r.json()),
         fetch(`http://localhost:3001/api/mitsumori/company`).then((r) => r.json()),
+        fetch(`http://localhost:3001/api/shain`).then((r) => r.json()),
       ]);
       setHeader(h);
       setItems(d);
       setCompany(c);
+      setShainList(s || []);
+    } catch (err) {
+      console.error("Load error:", err);
+      // shainList が失敗しても continue
+      setShainList([]);
     } finally {
       setLoading(false);
     }
@@ -73,12 +80,35 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
       <EditForm
         header={header}
         items={items}
-        shainList={[]} // ← 社員リストも渡す（EditForm 内で選択できるように）
+        shainList={shainList}
         onCancel={() => setMode("view")}
         onSaved={(no) => {
           setMode("view");  // 編集モード終了
           onMove(no);       // App に番号を渡す（Detail を再表示）
           load();           // 最新データを再取得（共通化した load を呼ぶ）
+        }}
+      />
+    );
+  }
+
+  // 複製モード
+  if (mode === "duplicate") {
+    // 新規作成ヘッダ（mitsumori_no = 0）を作成
+    const duplicateHeader = {
+      ...header,
+      mitsumori_no: 0,  // 新規フラグ
+    };
+
+    return (
+      <EditForm
+        header={duplicateHeader}
+        items={items}
+        shainList={shainList}
+        isDuplicate={true}
+        onCancel={() => setMode("view")}
+        onSaved={(newNo) => {
+          setMode("view");  // 複製モード終了
+          onMove(newNo);    // 新規見積書の詳細へ遷移
         }}
       />
     );
@@ -123,6 +153,12 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
           style={{ marginLeft: 10 }}
         >
           編集
+        </button>
+        <button
+          onClick={() => setMode("duplicate")}
+          style={{ marginLeft: 10 }}
+        >
+          複製
         </button>
       </div>
 

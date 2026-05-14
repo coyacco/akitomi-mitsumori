@@ -212,7 +212,7 @@ async fn start_axum_server_with_shutdown(rx: oneshot::Receiver<()>) {
             "/api/mitsumori/company/update",
             post(update_mitsumori_company),
         )
-        .route("/api/shain/:all", get(get_shain_list))
+        .route("/api/shain", get(get_shain_list))
         .route("/api/shain/add", post(add_shain))
         .route("/api/shain/visible", post(update_shain_visible))
         .layer(cors);
@@ -573,10 +573,20 @@ async fn get_mitsumori_company() -> Result<Json<MitsumoriCompany>, StatusCode> {
     Ok(Json(company))
 }
 
-async fn get_shain_list(Path(all): Path<i32>) -> Json<Vec<Shain>> {
+#[derive(Deserialize)]
+struct ShainQuery {
+    all: Option<i32>,   // all=1 のとき非表示も含める
+}
+
+async fn get_shain_list(
+    Query(params): Query<ShainQuery>,
+) -> Json<Vec<Shain>> {
+
     let conn = Connection::open(get_db_path()).unwrap();
 
-    let sql = if all == 1 {
+    let show_all = params.all.unwrap_or(0) == 1;
+
+    let sql = if show_all {
         "SELECT shain_CD, name, hide FROM shain ORDER BY shain_CD"
     } else {
         "SELECT shain_CD, name, hide FROM shain WHERE hide = 0 ORDER BY shain_CD"

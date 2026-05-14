@@ -18,7 +18,8 @@ call cargo build --release
 
 :: バッチファイルがある場所を基準にパスを設定
 set BUILD_DIR=%CD%
-set ISCC="C:\Users\coyac\AppData\Local\Programs\Inno Setup 6\ISCC.exe"
+REM set ISCC="C:\Users\coyac\AppData\Local\Programs\Inno Setup 6\ISCC.exe"
+set ISCC="C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 
 %ISCC% "%BUILD_DIR%\akitomi-server-installer.iss"
 echo "==== Server installer created. ===="
