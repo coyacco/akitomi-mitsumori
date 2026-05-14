@@ -177,7 +177,7 @@ export default function EditForm({
   const getCellId = (rowIdx: number, colName: string) => `cell-${rowIdx}-${colName}`;
 
   // --- 次の編集可能セルへ移動 ---
-  const focusCell = (rowIdx: number, colIdx: number, direction: "next" | "prev" = "next") => {
+  const focusCell = (rowIdx: number, colIdx: number) => {
     if (rowIdx < 0 || rowIdx >= rows.length) return;
 
     let targetCol = EDITABLE_COLS[colIdx];

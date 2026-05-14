@@ -35,7 +35,7 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
         fetch(`http://localhost:3001/api/mitsumori/header/${no}`).then((r) => r.json()),
         fetch(`http://localhost:3001/api/mitsumori/detail/${no}`).then((r) => r.json()),
         fetch(`http://localhost:3001/api/mitsumori/company`).then((r) => r.json()),
-        fetch(`http://localhost:3001/api/mitsumori/shain`).then((r) => r.json()),
+        fetch(`http://localhost:3001/api/shain`).then((r) => r.json()),
       ]);
       setHeader(h);
       setItems(d);

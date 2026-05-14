@@ -13,7 +13,7 @@ export default function ShainSettings({ server, onBack }: { server: string; onBa
 
     // 初期読み込み
     useEffect(() => {
-        fetch(`${server}/api/shain/1`)
+        fetch(`${server}/api/shain?all=1`)
             .then(r => r.json())
             .then(setList)
             .catch(() => setError("社員一覧を取得できませんでした"));
