@@ -9,7 +9,7 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
   const [items, setItems] = useState<DetailRow[]>([]);
   const [company, setCompany] = useState<MitsumoriCompany | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<"view" | "edit" | "print">("view");
+  const [mode, setMode] = useState<"view" | "edit" | "duplicate" | "print">("view");
 
   async function handleDelete() {
     if (!window.confirm("この見積書を削除しますか？")) return;
@@ -84,6 +84,28 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
     );
   }
 
+  // 複製モード
+  if (mode === "duplicate") {
+    // 新規作成ヘッダ（mitsumori_no = 0）を作成
+    const duplicateHeader = {
+      ...header,
+      mitsumori_no: 0,  // 新規フラグ
+    };
+
+    return (
+      <EditForm
+        header={duplicateHeader}
+        items={items}
+        shainList={[]}
+        onCancel={() => setMode("view")}
+        onSaved={(newNo) => {
+          setMode("view");  // 複製モード終了
+          onMove(newNo);    // 新規見積書の詳細へ遷移
+        }}
+      />
+    );
+  }
+
   return (
     <div style={{ padding: 20 }}>
       <h1 >見積書 詳細</h1>
@@ -123,6 +145,12 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
           style={{ marginLeft: 10 }}
         >
           編集
+        </button>
+        <button
+          onClick={() => setMode("duplicate")}
+          style={{ marginLeft: 10 }}
+        >
+          複製
         </button>
       </div>
 
