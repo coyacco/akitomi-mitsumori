@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { displayTantou } from "./utils";
 import { todayJST } from "./utils";
 import "./App.css";
@@ -32,6 +32,10 @@ interface DetailRow {
   kingaku: number | null;
   bikou: string;
 }
+
+// 編集可能なセルのカラム定義
+const EDITABLE_COLS = ["hinmoku", "suryo", "tanni", "tannka", "kingaku", "bikou"];
+const NUMERIC_COLS = ["suryo", "tannka", "kingaku"];
 
 export default function EditForm({
   header,
@@ -82,6 +86,10 @@ export default function EditForm({
   // 初期状態を保持する state
   const [originalHeader, setOriginalHeader] = useState<Header | null>(null);
   const [originalRows, setOriginalRows] = useState<DetailRow[] | null>(null);
+
+  // キーボード操作用 refs
+  const cellRefsMap = useRef<Map<string, HTMLInputElement | null>>(new Map());
+  const [isComposing, setIsComposing] = useState(false);
 
   // 新規作成時の初期化
   useEffect(() => {
@@ -162,6 +170,107 @@ export default function EditForm({
     const newRows = rows.filter((_, i) => i !== idx);
     setRows(newRows);
   }
+
+  // --- セル ID 生成 ---
+  const getCellId = (rowIdx: number, colName: string) => `cell-${rowIdx}-${colName}`;
+
+  // --- 次の編集可能セルへ移動 ---
+  const focusCell = (rowIdx: number, colIdx: number, direction: "next" | "prev" = "next") => {
+    if (rowIdx < 0 || rowIdx >= rows.length) return;
+
+    let targetCol = EDITABLE_COLS[colIdx];
+    if (!targetCol) return;
+
+    const cellId = getCellId(rowIdx, targetCol);
+    const input = cellRefsMap.current.get(cellId);
+    if (input) {
+      input.focus();
+      input.select?.();
+    }
+  };
+
+  // --- キーダウンハンドラ ---
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, rowIdx: number, colName: string) => {
+    if (isComposing) return; // IME変換中は無効
+
+    const colIdx = EDITABLE_COLS.indexOf(colName);
+    if (colIdx === -1) return;
+
+    const isNumeric = NUMERIC_COLS.includes(colName);
+
+    switch (e.key) {
+      case "ArrowUp":
+        e.preventDefault();
+        if (rowIdx > 0) {
+          focusCell(rowIdx - 1, colIdx);
+        }
+        break;
+
+      case "ArrowDown":
+        e.preventDefault();
+        if (rowIdx < rows.length - 1) {
+          focusCell(rowIdx + 1, colIdx);
+        }
+        break;
+
+      case "ArrowLeft":
+        e.preventDefault();
+        if (colIdx > 0) {
+          focusCell(rowIdx, colIdx - 1);
+        }
+        break;
+
+      case "ArrowRight":
+        e.preventDefault();
+        if (colIdx < EDITABLE_COLS.length - 1) {
+          focusCell(rowIdx, colIdx + 1);
+        }
+        break;
+
+      case "Tab":
+        if (e.shiftKey) {
+          // Shift+Tab: 前へ
+          e.preventDefault();
+          if (colIdx > 0) {
+            focusCell(rowIdx, colIdx - 1);
+          } else if (rowIdx > 0) {
+            focusCell(rowIdx - 1, EDITABLE_COLS.length - 1);
+          }
+        } else {
+          // Tab: 次へ
+          e.preventDefault();
+          if (colIdx < EDITABLE_COLS.length - 1) {
+            focusCell(rowIdx, colIdx + 1);
+          } else if (rowIdx < rows.length - 1) {
+            focusCell(rowIdx + 1, 0);
+          }
+        }
+        break;
+
+      case "Enter":
+        e.preventDefault();
+        if (isNumeric) {
+          // 数値フィールド: 次行先頭へ
+          if (rowIdx < rows.length - 1) {
+            focusCell(rowIdx + 1, 0);
+          }
+        } else {
+          // テキストフィールド: 次行同列へ
+          if (rowIdx < rows.length - 1) {
+            focusCell(rowIdx + 1, colIdx);
+          }
+        }
+        break;
+
+      case "Escape":
+        e.preventDefault();
+        (e.target as HTMLInputElement).blur();
+        break;
+
+      default:
+        break;
+    }
+  };
 
   // --- 集計計算 ---
   function calcSummary(rows: DetailRow[], zeiritsu: number | null, zei_type: number | null) {
@@ -433,56 +542,122 @@ export default function EditForm({
             <tr key={idx}>
               <td>
                 <input
+                  ref={(el) => {
+                    const cellId = getCellId(idx, "hinmoku");
+                    if (el) {
+                      cellRefsMap.current.set(cellId, el);
+                    } else {
+                      cellRefsMap.current.delete(cellId);
+                    }
+                  }}
                   value={r.hinmoku}
                   onChange={(e) =>
                     updateRow(idx, "hinmoku", e.target.value)
                   }
+                  onKeyDown={(e) => handleKeyDown(e, idx, "hinmoku")}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => setIsComposing(false)}
                 />
               </td>
 
               <td>
                 <input
+                  ref={(el) => {
+                    const cellId = getCellId(idx, "suryo");
+                    if (el) {
+                      cellRefsMap.current.set(cellId, el);
+                    } else {
+                      cellRefsMap.current.delete(cellId);
+                    }
+                  }}
                   type="number"
                   className="right"
                   value={r.suryo ?? ""}
                   onChange={(e) => updateRow(idx, "suryo", e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(e, idx, "suryo")}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => setIsComposing(false)}
                 />
               </td>
 
               <td>
                 <input
+                  ref={(el) => {
+                    const cellId = getCellId(idx, "tanni");
+                    if (el) {
+                      cellRefsMap.current.set(cellId, el);
+                    } else {
+                      cellRefsMap.current.delete(cellId);
+                    }
+                  }}
                   className="center"
                   value={r.tanni}
                   onChange={(e) =>
                     updateRow(idx, "tanni", e.target.value)
                   }
+                  onKeyDown={(e) => handleKeyDown(e, idx, "tanni")}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => setIsComposing(false)}
                 />
               </td>
 
               <td>
                 <input
+                  ref={(el) => {
+                    const cellId = getCellId(idx, "tannka");
+                    if (el) {
+                      cellRefsMap.current.set(cellId, el);
+                    } else {
+                      cellRefsMap.current.delete(cellId);
+                    }
+                  }}
                   type="number"
                   className="right"
                   value={r.tannka ?? ""}
                   onChange={(e) => updateRow(idx, "tannka", e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(e, idx, "tannka")}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => setIsComposing(false)}
                 />
               </td>
 
               <td>
                 <input
+                  ref={(el) => {
+                    const cellId = getCellId(idx, "kingaku");
+                    if (el) {
+                      cellRefsMap.current.set(cellId, el);
+                    } else {
+                      cellRefsMap.current.delete(cellId);
+                    }
+                  }}
                   type="number"
                   className="right"
                   value={r.kingaku ?? ""}
                   onChange={(e) => updateRow(idx, "kingaku", e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(e, idx, "kingaku")}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => setIsComposing(false)}
                 />
               </td>
 
               <td>
                 <input
+                  ref={(el) => {
+                    const cellId = getCellId(idx, "bikou");
+                    if (el) {
+                      cellRefsMap.current.set(cellId, el);
+                    } else {
+                      cellRefsMap.current.delete(cellId);
+                    }
+                  }}
                   value={r.bikou || ""}
                   onChange={(e) =>
                     updateRow(idx, "bikou", e.target.value)
                   }
+                  onKeyDown={(e) => handleKeyDown(e, idx, "bikou")}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => setIsComposing(false)}
                 />
               </td>
 
