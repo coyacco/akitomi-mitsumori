@@ -1,8 +1,8 @@
-#define ServerVersion "1.0.0"
+#define ServerVersion "1.1.0"
 
 [Setup]
 AppName=Akitomi 見積書サーバ
-AppVersion=2026.1
+AppVersion=1.1.0
 WizardStyle=modern dynamic
 DefaultDirName=C:\AkitomiServer
 DefaultGroupName=AkitomiServer
