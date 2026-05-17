@@ -909,7 +909,6 @@ export default function EditForm({
 // SortableRow コンポーネント作成
 function SortableRow({
   row,
-  idx,
   children,
 }: {
   row: any;
