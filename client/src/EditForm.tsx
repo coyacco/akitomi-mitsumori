@@ -3,6 +3,9 @@ import { displayTantou } from "./utils";
 import { todayJST } from "./utils";
 import "./App.css";
 
+// UUID生成用の簡易関数
+const generateId = () => `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
 interface Header {
   mitsumori_no: number;
   sakusei: string | null;
@@ -25,6 +28,7 @@ interface Header {
 }
 
 interface DetailRow {
+  id?: string;
   hinmoku: string;
   suryo: number | null;
   tanni: string;
@@ -71,11 +75,16 @@ export default function EditForm({
 
   const [rows, setRows] = useState(() => {
     if (items.length > 0) {
-      return items; // 既存データの編集
+      // 既存データの編集 - IDが無ければ付与
+      return items.map(item => ({
+        ...item,
+        id: item.id || generateId()
+      }));
     }
 
     // 新規作成 → 30 行の空行を作る
     return Array.from({ length: 30 }, () => ({
+      id: generateId(),
       hinmoku: "",
       suryo: null,
       tanni: "",
@@ -94,7 +103,7 @@ export default function EditForm({
   const [isComposing, setIsComposing] = useState(false);
 
   // ドラッグ・アンド・ドロップ用の state
-  const [draggedRowIdx, setDraggedRowIdx] = useState<number | null>(null);
+  const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
 
   // 新規作成時の初期化
   useEffect(() => {
@@ -166,7 +175,7 @@ export default function EditForm({
   function addRow() {
     setRows([
       ...rows,
-      { hinmoku: "", suryo: null, tanni: "", tannka: null, kingaku: null, bikou: "" },
+      { id: generateId(), hinmoku: "", suryo: null, tanni: "", tannka: null, kingaku: null, bikou: "" },
     ]);
   }
 
@@ -180,8 +189,8 @@ export default function EditForm({
   const getCellId = (rowIdx: number, colName: string) => `cell-${rowIdx}-${colName}`;
 
   // --- ドラッグ・アンド・ドロップハンドラ ---
-  const handleRowDragStart = (e: React.DragEvent<HTMLTableRowElement>, rowIdx: number) => {
-    setDraggedRowIdx(rowIdx);
+  const handleRowDragStart = (e: React.DragEvent<HTMLTableRowElement>, rowId: string) => {
+    setDraggedRowId(rowId);
     e.dataTransfer.effectAllowed = "move";
   };
 
@@ -190,31 +199,39 @@ export default function EditForm({
     e.dataTransfer.dropEffect = "move";
   };
 
-  const handleRowDrop = (e: React.DragEvent<HTMLTableRowElement>, targetRowIdx: number) => {
+  const handleRowDrop = (e: React.DragEvent<HTMLTableRowElement>, targetRowId: string) => {
     e.preventDefault();
     
-    if (draggedRowIdx === null || draggedRowIdx === targetRowIdx) {
-      setDraggedRowIdx(null);
+    if (draggedRowId === null || draggedRowId === targetRowId) {
+      setDraggedRowId(null);
       return;
     }
 
     setRows(prev => {
+      const draggedIdx = prev.findIndex(r => r.id === draggedRowId);
+      const targetIdx = prev.findIndex(r => r.id === targetRowId);
+      
+      if (draggedIdx === -1 || targetIdx === -1) {
+        return prev;
+      }
+
       const newRows = [...prev];
-      const draggedRow = newRows[draggedRowIdx];
+      const draggedRow = newRows[draggedIdx];
       
       // 削除
-      newRows.splice(draggedRowIdx, 1);
+      newRows.splice(draggedIdx, 1);
       // 挿入
-      newRows.splice(targetRowIdx, 0, draggedRow);
+      const insertIdx = draggedIdx < targetIdx ? targetIdx - 1 : targetIdx;
+      newRows.splice(insertIdx, 0, draggedRow);
       
       return newRows;
     });
 
-    setDraggedRowIdx(null);
+    setDraggedRowId(null);
   };
 
   const handleRowDragEnd = () => {
-    setDraggedRowIdx(null);
+    setDraggedRowId(null);
   };
 
   // --- 次の編集可能セルへ移動 ---
@@ -590,16 +607,16 @@ export default function EditForm({
         <tbody>
           {rows.map((r, idx) => (
             <tr
-              key={idx}
+              key={r.id}
               draggable
-              onDragStart={(e) => handleRowDragStart(e, idx)}
+              onDragStart={(e) => handleRowDragStart(e, r.id || '')}
               onDragOver={handleRowDragOver}
-              onDrop={(e) => handleRowDrop(e, idx)}
+              onDrop={(e) => handleRowDrop(e, r.id || '')}
               onDragEnd={handleRowDragEnd}
               style={{
-                opacity: draggedRowIdx === idx ? 0.5 : 1,
+                opacity: draggedRowId === r.id ? 0.5 : 1,
                 cursor: 'grab',
-                backgroundColor: draggedRowIdx === idx ? '#f0f0f0' : 'transparent',
+                backgroundColor: draggedRowId === r.id ? '#f0f0f0' : 'transparent',
               }}
             >
               <td style={{ textAlign: 'center', color: '#999', cursor: 'grab' }}>☰</td>
