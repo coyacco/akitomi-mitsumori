@@ -130,6 +130,22 @@ export default function EditForm({
     }
   }, []);
 
+  // ドキュメント全体でマウスアップを監視
+  useEffect(() => {
+    const handleGlobalMouseUp = (_e: MouseEvent) => {
+      if (draggedRowId) {
+        console.log('Global mouseUp - dragging ended');
+        setDraggedRowId(null);
+        setHoveredRowId(null);
+      }
+    };
+
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [draggedRowId]);
+
   function hasChanges() {
     if (!originalHeader || !originalRows) return false;
 
@@ -696,9 +712,10 @@ export default function EditForm({
               onMouseLeave={handleRowMouseLeave}
               onMouseUp={(e) => handleRowMouseUp(e, r.id || '')}
               style={{
-                opacity: draggedRowId === r.id ? 0.5 : 1,
+                opacity: draggedRowId === r.id ? 0.6 : 1,
                 cursor: draggedRowId === r.id ? 'grabbing' : 'grab',
-                backgroundColor: hoveredRowId === r.id && draggedRowId ? '#e8f5e9' : (draggedRowId === r.id ? '#f0f0f0' : 'transparent'),
+                backgroundColor: draggedRowId === r.id ? '#ffd54f' : (hoveredRowId === r.id && draggedRowId ? '#ffe082' : 'transparent'),
+                transition: 'all 0.15s ease-out',
               }}
             >
               <td 
