@@ -93,6 +93,9 @@ export default function EditForm({
   const cellRefsMap = useRef<Map<string, HTMLInputElement | null>>(new Map());
   const [isComposing, setIsComposing] = useState(false);
 
+  // ドラッグ・アンド・ドロップ用の state
+  const [draggedRowIdx, setDraggedRowIdx] = useState<number | null>(null);
+
   // 新規作成時の初期化
   useEffect(() => {
     if (h.mitsumori_no === 0) {
@@ -175,6 +178,44 @@ export default function EditForm({
 
   // --- セル ID 生成 ---
   const getCellId = (rowIdx: number, colName: string) => `cell-${rowIdx}-${colName}`;
+
+  // --- ドラッグ・アンド・ドロップハンドラ ---
+  const handleRowDragStart = (e: React.DragEvent<HTMLTableRowElement>, rowIdx: number) => {
+    setDraggedRowIdx(rowIdx);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleRowDragOver = (e: React.DragEvent<HTMLTableRowElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleRowDrop = (e: React.DragEvent<HTMLTableRowElement>, targetRowIdx: number) => {
+    e.preventDefault();
+    
+    if (draggedRowIdx === null || draggedRowIdx === targetRowIdx) {
+      setDraggedRowIdx(null);
+      return;
+    }
+
+    setRows(prev => {
+      const newRows = [...prev];
+      const draggedRow = newRows[draggedRowIdx];
+      
+      // 削除
+      newRows.splice(draggedRowIdx, 1);
+      // 挿入
+      newRows.splice(targetRowIdx, 0, draggedRow);
+      
+      return newRows;
+    });
+
+    setDraggedRowIdx(null);
+  };
+
+  const handleRowDragEnd = () => {
+    setDraggedRowIdx(null);
+  };
 
   // --- 次の編集可能セルへ移動 ---
   const focusCell = (rowIdx: number, colIdx: number) => {
@@ -535,6 +576,7 @@ export default function EditForm({
       <table className="detail-table">
         <thead>
           <tr>
+            <th style={{ width: 30 }}></th>
             <th>品目</th>
             <th>数量</th>
             <th>単位</th>
@@ -547,7 +589,20 @@ export default function EditForm({
 
         <tbody>
           {rows.map((r, idx) => (
-            <tr key={idx}>
+            <tr
+              key={idx}
+              draggable
+              onDragStart={(e) => handleRowDragStart(e, idx)}
+              onDragOver={handleRowDragOver}
+              onDrop={(e) => handleRowDrop(e, idx)}
+              onDragEnd={handleRowDragEnd}
+              style={{
+                opacity: draggedRowIdx === idx ? 0.5 : 1,
+                cursor: 'grab',
+                backgroundColor: draggedRowIdx === idx ? '#f0f0f0' : 'transparent',
+              }}
+            >
+              <td style={{ textAlign: 'center', color: '#999', cursor: 'grab' }}>☰</td>
               <td>
                 <input
                   ref={(el) => {
