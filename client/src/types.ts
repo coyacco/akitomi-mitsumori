@@ -41,3 +41,12 @@ export interface MitsumoriCompany {
     kaishain: number | null,
     mix: String | null,
 }
+
+export const detailColumns = [
+  { key: "hinmoku", width: "110mm" },
+  { key: "suryo", width: "13mm" },
+  { key: "tanni", width: "10mm" },
+  { key: "tanka", width: "20mm" },
+  { key: "kingaku", width: "23mm" },
+  { key: "bikou", width: "40mm" },
+];

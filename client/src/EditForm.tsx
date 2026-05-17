@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { displayTantou } from "./utils";
 import { todayJST } from "./utils";
+import { detailColumns } from "./types";
 import "./App.css";
 
 // UUID生成用の簡易関数
@@ -188,17 +189,59 @@ export default function EditForm({
     });
   }
 
+  function createEmptyRow() {
+    return {
+      id: crypto.randomUUID(),
+
+      hinmoku: "",
+      suryo: null,
+      tanni: "",
+      tannka: null,
+      kingaku: null,
+      bikou: "",
+    };
+  }
+
   // --- 明細行追加 ---
-  function addRow() {
-    setRows([
-      ...rows,
-      { id: generateId(), hinmoku: "", suryo: null, tanni: "", tannka: null, kingaku: null, bikou: "" },
-    ]);
+  function addRow(insertIndex: number) {
+    const newRows = [...rows];
+
+    newRows.splice(insertIndex, 0, createEmptyRow());
+
+    setRows(newRows);
+  }
+
+  // 明細行を一番下に追加
+  function appendRow() {
+    addRow(rows.length);
   }
 
   // --- 明細行削除 ---
   function removeRow(idx: number) {
+    const row = rows[idx];
+
+    // 何か入力されているか
+    const hasValue =
+      row.hinmoku?.trim() ||
+      row.suryo ||
+      row.tanni?.trim() ||
+      row.tannka ||
+      row.kingaku ||
+      row.bikou?.trim();
+
+    // 入力がある場合だけ警告
+    if (hasValue) {
+      const ok = window.confirm(
+        "入力されている内容が削除されます。よろしいですか？"
+      );
+
+      if (!ok) {
+        return;
+      }
+    }
+
     const newRows = rows.filter((_, i) => i !== idx);
+
     setRows(newRows);
   }
 
@@ -223,7 +266,7 @@ export default function EditForm({
     console.log('drop:', targetRowId, 'from:', draggedRowId);
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (draggedRowId === null || draggedRowId === targetRowId) {
       setDraggedRowId(null);
       return;
@@ -232,19 +275,19 @@ export default function EditForm({
     setRows(prev => {
       const draggedIdx = prev.findIndex(r => r.id === draggedRowId);
       const targetIdx = prev.findIndex(r => r.id === targetRowId);
-      
+
       console.log('draggedIdx:', draggedIdx, 'targetIdx:', targetIdx);
-      
+
       if (draggedIdx === -1 || targetIdx === -1) {
         return prev;
       }
 
       const newRows = [...prev];
       const draggedRow = newRows[draggedIdx];
-      
+
       // 1. ドラッグ行を削除
       newRows.splice(draggedIdx, 1);
-      
+
       // 2. 削除後、ターゲットのインデックスが変わる場合がある
       let insertIdx: number;
       if (draggedIdx < targetIdx) {
@@ -255,10 +298,10 @@ export default function EditForm({
         // 上に移動する場合：ターゲットはシフトしない
         insertIdx = targetIdx;
       }
-      
+
       // 3. 計算した位置に挿入
       newRows.splice(insertIdx, 0, draggedRow);
-      
+
       console.log('rows reordered - insertIdx:', insertIdx);
       return newRows;
     });
@@ -284,19 +327,19 @@ export default function EditForm({
       setRows(prev => {
         const draggedIdx = prev.findIndex(r => r.id === draggedRowId);
         const targetIdx = prev.findIndex(r => r.id === targetRowId);
-        
+
         console.log('mouseUp reorder - draggedIdx:', draggedIdx, 'targetIdx:', targetIdx);
-        
+
         if (draggedIdx === -1 || targetIdx === -1) {
           return prev;
         }
 
         const newRows = [...prev];
         const draggedRow = newRows[draggedIdx];
-        
+
         // 1. ドラッグ行を削除
         newRows.splice(draggedIdx, 1);
-        
+
         // 2. 削除後、ターゲットのインデックスが変わる場合がある
         let insertIdx: number;
         if (draggedIdx < targetIdx) {
@@ -307,10 +350,10 @@ export default function EditForm({
           // 上に移動する場合：ターゲットはシフトしない
           insertIdx = targetIdx;
         }
-        
+
         // 3. 計算した位置に挿入
         newRows.splice(insertIdx, 0, draggedRow);
-        
+
         console.log('rows reordered by mouse - insertIdx:', insertIdx);
         return newRows;
       });
@@ -686,9 +729,21 @@ export default function EditForm({
 
       {/* --- 明細テーブル --- */}
       <table className="detail-table">
+        <colgroup>
+          {/* 移動列 */}
+          <col style={{ width: "8mm" }} />
+
+          {/* 共通列 */}
+          {detailColumns.map((c) => (
+            <col key={c.key} style={{ width: c.width }} />
+          ))}
+
+          {/* 削除列 */}
+          <col style={{ width: "16mm" }} />
+        </colgroup>
         <thead>
           <tr>
-            <th style={{ width: 30 }}></th>
+            <th></th>
             <th>品目</th>
             <th>数量</th>
             <th>単位</th>
@@ -714,11 +769,11 @@ export default function EditForm({
               style={{
                 opacity: draggedRowId === r.id ? 0.6 : 1,
                 cursor: draggedRowId === r.id ? 'grabbing' : 'grab',
-                backgroundColor: draggedRowId === r.id ? '#ffd54f' : (hoveredRowId === r.id && draggedRowId ? '#ffe082' : 'transparent'),
+                backgroundColor: draggedRowId === r.id ? '#4dd0e1' : (hoveredRowId === r.id && draggedRowId ? '#80deea' : 'transparent'),
                 transition: 'all 0.15s ease-out',
               }}
             >
-              <td 
+              <td
                 style={{ textAlign: 'center', color: '#999', cursor: draggedRowId ? 'grabbing' : 'grab', userSelect: 'none' }}
                 onMouseDown={(e) => handleHandleMouseDown(e, r.id || '')}
               >
@@ -846,7 +901,8 @@ export default function EditForm({
               </td>
 
               <td>
-                <button onClick={() => removeRow(idx)}>削除</button>
+                <button title="上に行を追加" onClick={() => addRow(idx)}>+</button>
+                <button title="行を削除" onClick={() => removeRow(idx)}>-</button>
               </td>
             </tr>
           ))}
@@ -854,7 +910,7 @@ export default function EditForm({
           {h.zei_type === 0 && (
             <>
               <tr>
-                <td className="no-border"></td>
+                <td colSpan={2} className="no-border"></td>
                 <td colSpan={3} className="summary-label">小計</td>
                 <td className="text-right">
                   {subtotal != null ? subtotal.toLocaleString() : ""}
@@ -863,9 +919,9 @@ export default function EditForm({
               </tr>
 
               <tr>
-                <td className="no-border"></td>
+                <td colSpan={2} className="no-border"></td>
                 <td colSpan={3} className="summary-label">
-                  {h.zeiritsu == null ? "消費税" : `消費税（${h.zeiritsu}％）`}
+                  {h.zeiritsu == null ? "消費税" : `消費税 (${h.zeiritsu}%)`}
                 </td>
                 <td className="text-right">
                   {tax != null ? tax.toLocaleString() : ""}
@@ -876,7 +932,7 @@ export default function EditForm({
           )}
 
           <tr>
-            <td className="no-border"></td>
+            <td colSpan={2} className="no-border"></td>
             <td colSpan={3} className="summary-label">合計</td>
             <td className="text-right">{total.toLocaleString()}</td>
             <td className="no-border"></td>
@@ -885,8 +941,8 @@ export default function EditForm({
         </tbody>
       </table>
 
-      <button onClick={addRow} style={{ marginTop: 10 }}>
-        ＋ 行追加
+      <button onClick={appendRow} style={{ marginTop: 10 }}>
+        + 行追加
       </button>
     </div>
   );

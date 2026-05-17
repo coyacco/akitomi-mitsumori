@@ -190,50 +190,6 @@ table.detail-table tbody tr:hover {
   background-color: #f0f8ff;
 }
 
-/* --- 列幅（mm 指定）--- */
-
-/* 品名・仕様 */
-table.detail-table th:nth-child(1),
-table.detail-table td:nth-child(1) {
-  width: 110mm;
-}
-
-/* 数量 */
-table.detail-table th:nth-child(2),
-table.detail-table td:nth-child(2) {
-  width: 13mm;
-}
-
-/* 単位 */
-table.detail-table th:nth-child(3),
-table.detail-table td:nth-child(3) {
-  width: 10mm;
-}
-
-/* 単価 */
-table.detail-table th:nth-child(4),
-table.detail-table td:nth-child(4) {
-  width: 20mm;
-}
-
-/* 金額 */
-table.detail-table th:nth-child(5),
-table.detail-table td:nth-child(5) {
-  width: 23mm;
-}
-
-/* 備考 */
-table.detail-table th:nth-child(6),
-table.detail-table td:nth-child(6) {
-  width: 40mm;
-}
-
-/* 備考 */
-table.detail-table th:nth-child(7),
-table.detail-table td:nth-child(7) {
-  width: 16mm;
-}
-
 input:focus {
   border: 1px solid #7ab6f9;
   /* 薄いブルーの枠線 */
