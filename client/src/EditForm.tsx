@@ -226,13 +226,24 @@ export default function EditForm({
       const newRows = [...prev];
       const draggedRow = newRows[draggedIdx];
       
-      // 削除
+      // 1. ドラッグ行を削除
       newRows.splice(draggedIdx, 1);
-      // 挿入
-      const insertIdx = draggedIdx < targetIdx ? targetIdx - 1 : targetIdx;
+      
+      // 2. 削除後、ターゲットのインデックスが変わる場合がある
+      let insertIdx: number;
+      if (draggedIdx < targetIdx) {
+        // 下に移動する場合：ターゲットが1つ上にシフト
+        // ターゲットの直後に挿入するため、targetIdx - 1 + 1 = targetIdx
+        insertIdx = targetIdx;
+      } else {
+        // 上に移動する場合：ターゲットはシフトしない
+        insertIdx = targetIdx;
+      }
+      
+      // 3. 計算した位置に挿入
       newRows.splice(insertIdx, 0, draggedRow);
       
-      console.log('rows reordered');
+      console.log('rows reordered - insertIdx:', insertIdx);
       return newRows;
     });
 
@@ -267,11 +278,24 @@ export default function EditForm({
         const newRows = [...prev];
         const draggedRow = newRows[draggedIdx];
         
+        // 1. ドラッグ行を削除
         newRows.splice(draggedIdx, 1);
-        const insertIdx = draggedIdx < targetIdx ? targetIdx - 1 : targetIdx;
+        
+        // 2. 削除後、ターゲットのインデックスが変わる場合がある
+        let insertIdx: number;
+        if (draggedIdx < targetIdx) {
+          // 下に移動する場合：ターゲットが1つ上にシフト
+          // ターゲットの直後に挿入するため、targetIdx - 1 + 1 = targetIdx
+          insertIdx = targetIdx;
+        } else {
+          // 上に移動する場合：ターゲットはシフトしない
+          insertIdx = targetIdx;
+        }
+        
+        // 3. 計算した位置に挿入
         newRows.splice(insertIdx, 0, draggedRow);
         
-        console.log('rows reordered by mouse');
+        console.log('rows reordered by mouse - insertIdx:', insertIdx);
         return newRows;
       });
     }
