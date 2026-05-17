@@ -148,6 +148,7 @@ table.detail-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  table-layout: fixed;
 }
 
 table.detail-table th,
@@ -156,6 +157,7 @@ table.detail-table td {
   padding: 4px;
   height: 16px;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 table.detail-table th {
@@ -188,50 +190,6 @@ table.detail-table tr:nth-child(even) {
 
 table.detail-table tbody tr:hover {
   background-color: #f0f8ff;
-}
-
-/* --- 列幅（mm 指定）--- */
-
-/* 品名・仕様 */
-table.detail-table th:nth-child(1),
-table.detail-table td:nth-child(1) {
-  width: 110mm;
-}
-
-/* 数量 */
-table.detail-table th:nth-child(2),
-table.detail-table td:nth-child(2) {
-  width: 13mm;
-}
-
-/* 単位 */
-table.detail-table th:nth-child(3),
-table.detail-table td:nth-child(3) {
-  width: 10mm;
-}
-
-/* 単価 */
-table.detail-table th:nth-child(4),
-table.detail-table td:nth-child(4) {
-  width: 20mm;
-}
-
-/* 金額 */
-table.detail-table th:nth-child(5),
-table.detail-table td:nth-child(5) {
-  width: 23mm;
-}
-
-/* 備考 */
-table.detail-table th:nth-child(6),
-table.detail-table td:nth-child(6) {
-  width: 40mm;
-}
-
-/* 備考 */
-table.detail-table th:nth-child(7),
-table.detail-table td:nth-child(7) {
-  width: 16mm;
 }
 
 input:focus {
@@ -353,4 +311,41 @@ input:focus {
   body {
     margin: 0;
   }
+}
+
+/* ドラッグ時の浮いてる感 */
+.drag-overlay-table {
+  border-collapse: collapse;
+  pointer-events: none;
+}
+
+.drag-overlay-row {
+  opacity: 0.75;
+
+  background: white;
+
+  box-shadow:
+    4px 4px 12px rgb(143, 143, 143);
+
+  cursor: grabbing;
+}
+
+/* 編集行の追加と削除のボタン */
+.row-actions {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.row-actions button {
+  padding: 0 6px;
+
+  min-width: 24px;
+  height: 24px;
+
+  font-size: 12px;
+  line-height: 1;
+
+  box-sizing: border-box;
 }

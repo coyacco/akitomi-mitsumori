@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { displayTantou } from "./utils";
 import EditForm from "./EditForm";
 import PrintPreview from "./PrintPreview";
-import type { DetailHeader, DetailRow, MitsumoriCompany } from "./types";
+import { detailColumns, type DetailHeader, type DetailRow, type MitsumoriCompany } from "./types";
 
 export default function Detail({ no, onBack, onMove }: { no: number; onBack: () => void; onMove: (nextNo: number) => void }) {
   const [header, setHeader] = useState<DetailHeader | null>(null);
@@ -180,7 +180,11 @@ export default function Detail({ no, onBack, onMove }: { no: number; onBack: () 
 
       {/* --- 明細一覧 --- */}
       <table className="detail-table">
-        <thead className="table-header">
+        <colgroup>
+          {detailColumns.map((c) => (
+            <col key={c.key} style={{ width: c.width }} />
+          ))}
+        </colgroup>        <thead className="table-header">
           <tr>
             <th>品目</th>
             <th>数量</th>

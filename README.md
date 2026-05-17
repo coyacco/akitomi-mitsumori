@@ -256,3 +256,7 @@ https://sqlitebrowser.org/
 ## アイコン画像編集
 Gimp
 https://www.gimp.org/
+
+## ドラッグ＆ドロップ
+npm install @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities
+

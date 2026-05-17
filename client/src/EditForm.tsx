@@ -1,7 +1,29 @@
 import { useEffect, useState, useRef } from "react";
 import { displayTantou } from "./utils";
 import { todayJST } from "./utils";
+import { detailColumns } from "./types";
 import "./App.css";
+
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+  DragOverlay,
+} from "@dnd-kit/core";
+
+import {
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+
+import { CSS } from "@dnd-kit/utilities";
+
+// UUID生成用の簡易関数
+const generateId = () => `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 interface Header {
   mitsumori_no: number;
@@ -25,6 +47,7 @@ interface Header {
 }
 
 interface DetailRow {
+  id?: string;
   hinmoku: string;
   suryo: number | null;
   tanni: string;
@@ -71,11 +94,16 @@ export default function EditForm({
 
   const [rows, setRows] = useState(() => {
     if (items.length > 0) {
-      return items; // 既存データの編集
+      // 既存データの編集 - IDが無ければ付与
+      return items.map(item => ({
+        ...item,
+        id: item.id || generateId()
+      }));
     }
 
     // 新規作成 → 30 行の空行を作る
     return Array.from({ length: 30 }, () => ({
+      id: generateId(),
       hinmoku: "",
       suryo: null,
       tanni: "",
@@ -92,6 +120,15 @@ export default function EditForm({
   // キーボード操作用 refs
   const cellRefsMap = useRef<Map<string, HTMLInputElement | null>>(new Map());
   const [isComposing, setIsComposing] = useState(false);
+
+  // ドラッグ・アンド・ドロップ用
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
 
   // 新規作成時の初期化
   useEffect(() => {
@@ -159,22 +196,98 @@ export default function EditForm({
     });
   }
 
+  function createEmptyRow() {
+    return {
+      id: crypto.randomUUID(),
+
+      hinmoku: "",
+      suryo: null,
+      tanni: "",
+      tannka: null,
+      kingaku: null,
+      bikou: "",
+    };
+  }
+
   // --- 明細行追加 ---
-  function addRow() {
-    setRows([
-      ...rows,
-      { hinmoku: "", suryo: null, tanni: "", tannka: null, kingaku: null, bikou: "" },
-    ]);
+  function addRow(insertIndex: number) {
+    const newRows = [...rows];
+
+    newRows.splice(insertIndex, 0, createEmptyRow());
+
+    setRows(newRows);
+  }
+
+  // 明細行を一番下に追加
+  function appendRow() {
+    addRow(rows.length);
   }
 
   // --- 明細行削除 ---
   function removeRow(idx: number) {
+    const row = rows[idx];
+
+    // 何か入力されているか
+    const hasValue =
+      row.hinmoku?.trim() ||
+      row.suryo ||
+      row.tanni?.trim() ||
+      row.tannka ||
+      row.kingaku ||
+      row.bikou?.trim();
+
+    // 入力がある場合だけ警告
+    if (hasValue) {
+      const ok = window.confirm(
+        "入力されている内容が削除されます。よろしいですか？"
+      );
+
+      if (!ok) {
+        return;
+      }
+    }
+
     const newRows = rows.filter((_, i) => i !== idx);
+
     setRows(newRows);
   }
 
   // --- セル ID 生成 ---
   const getCellId = (rowIdx: number, colName: string) => `cell-${rowIdx}-${colName}`;
+
+
+  // --- ドラッグ・アンド・ドロップハンドラ ---
+  const [activeRowId, setActiveRowId] = useState<string | null>(null);
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveRowId(event.active.id as string);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    setActiveRowId(null);
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = rows.findIndex(
+      (r) => r.id === active.id
+    );
+
+    const newIndex = rows.findIndex(
+      (r) => r.id === over.id
+    );
+
+    setRows((items) =>
+      arrayMove(items, oldIndex, newIndex)
+    );
+  }
+
+  function handleDragCancel() {
+    setActiveRowId(null);
+  }
 
   // --- 次の編集可能セルへ移動 ---
   const focusCell = (rowIdx: number, colIdx: number) => {
@@ -531,187 +644,315 @@ export default function EditForm({
         </tbody>
       </table>
 
-      {/* --- 明細テーブル --- */}
-      <table className="detail-table">
-        <thead>
-          <tr>
-            <th>品目</th>
-            <th>数量</th>
-            <th>単位</th>
-            <th>単価</th>
-            <th>金額</th>
-            <th>備考</th>
-            <th></th>
-          </tr>
-        </thead>
+      {/* --- ドラッグ＆ドロップ --- */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
 
-        <tbody>
-          {rows.map((r, idx) => (
-            <tr key={idx}>
-              <td>
-                <input
-                  ref={(el) => {
-                    const cellId = getCellId(idx, "hinmoku");
-                    if (el) {
-                      cellRefsMap.current.set(cellId, el);
-                    } else {
-                      cellRefsMap.current.delete(cellId);
-                    }
-                  }}
-                  value={r.hinmoku}
-                  onChange={(e) =>
-                    updateRow(idx, "hinmoku", e.target.value)
-                  }
-                  onKeyDown={(e) => handleKeyDown(e, idx, "hinmoku")}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                />
-              </td>
+        {/* --- 明細テーブル --- */}
+        <table className="detail-table">
+          <colgroup>
+            {/* 移動列 */}
+            <col style={{ width: "8mm" }} />
 
-              <td>
-                <input
-                  ref={(el) => {
-                    const cellId = getCellId(idx, "suryo");
-                    if (el) {
-                      cellRefsMap.current.set(cellId, el);
-                    } else {
-                      cellRefsMap.current.delete(cellId);
-                    }
-                  }}
-                  type="number"
-                  className="right"
-                  value={r.suryo ?? ""}
-                  onChange={(e) => updateRow(idx, "suryo", e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, idx, "suryo")}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                />
-              </td>
+            {/* 共通列 */}
+            {detailColumns.map((c) => (
+              <col key={c.key} style={{ width: c.width }} />
+            ))}
 
-              <td>
-                <input
-                  ref={(el) => {
-                    const cellId = getCellId(idx, "tanni");
-                    if (el) {
-                      cellRefsMap.current.set(cellId, el);
-                    } else {
-                      cellRefsMap.current.delete(cellId);
-                    }
-                  }}
-                  className="center"
-                  value={r.tanni}
-                  onChange={(e) =>
-                    updateRow(idx, "tanni", e.target.value)
-                  }
-                  onKeyDown={(e) => handleKeyDown(e, idx, "tanni")}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                />
-              </td>
-
-              <td>
-                <input
-                  ref={(el) => {
-                    const cellId = getCellId(idx, "tannka");
-                    if (el) {
-                      cellRefsMap.current.set(cellId, el);
-                    } else {
-                      cellRefsMap.current.delete(cellId);
-                    }
-                  }}
-                  type="number"
-                  className="right"
-                  value={r.tannka ?? ""}
-                  onChange={(e) => updateRow(idx, "tannka", e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, idx, "tannka")}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                />
-              </td>
-
-              <td>
-                <input
-                  ref={(el) => {
-                    const cellId = getCellId(idx, "kingaku");
-                    if (el) {
-                      cellRefsMap.current.set(cellId, el);
-                    } else {
-                      cellRefsMap.current.delete(cellId);
-                    }
-                  }}
-                  type="number"
-                  className="right"
-                  value={r.kingaku ?? ""}
-                  onChange={(e) => updateRow(idx, "kingaku", e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, idx, "kingaku")}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                />
-              </td>
-
-              <td>
-                <input
-                  ref={(el) => {
-                    const cellId = getCellId(idx, "bikou");
-                    if (el) {
-                      cellRefsMap.current.set(cellId, el);
-                    } else {
-                      cellRefsMap.current.delete(cellId);
-                    }
-                  }}
-                  value={r.bikou || ""}
-                  onChange={(e) =>
-                    updateRow(idx, "bikou", e.target.value)
-                  }
-                  onKeyDown={(e) => handleKeyDown(e, idx, "bikou")}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                />
-              </td>
-
-              <td>
-                <button onClick={() => removeRow(idx)}>削除</button>
-              </td>
+            {/* 削除列 */}
+            <col style={{ width: "16mm" }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <th></th>
+              <th>品目</th>
+              <th>数量</th>
+              <th>単位</th>
+              <th>単価</th>
+              <th>金額</th>
+              <th>備考</th>
+              <th></th>
             </tr>
-          ))}
+          </thead>
 
-          {h.zei_type === 0 && (
-            <>
-              <tr>
-                <td className="no-border"></td>
-                <td colSpan={3} className="summary-label">小計</td>
-                <td className="text-right">
-                  {subtotal != null ? subtotal.toLocaleString() : ""}
+          <tbody>
+            {rows.map((r, idx) => (
+              <SortableRow
+                key={r.id}
+                row={r}
+                idx={idx}
+              >
+
+                <td>
+                  <input
+                    ref={(el) => {
+                      const cellId = getCellId(idx, "hinmoku");
+                      if (el) {
+                        cellRefsMap.current.set(cellId, el);
+                      } else {
+                        cellRefsMap.current.delete(cellId);
+                      }
+                    }}
+                    value={r.hinmoku}
+                    onChange={(e) =>
+                      updateRow(idx, "hinmoku", e.target.value)
+                    }
+                    onKeyDown={(e) => handleKeyDown(e, idx, "hinmoku")}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
+                  />
                 </td>
-                <td className="no-border"></td>
-              </tr>
 
-              <tr>
-                <td className="no-border"></td>
-                <td colSpan={3} className="summary-label">
-                  {h.zeiritsu == null ? "消費税" : `消費税（${h.zeiritsu}％）`}
+                <td>
+                  <input
+                    ref={(el) => {
+                      const cellId = getCellId(idx, "suryo");
+                      if (el) {
+                        cellRefsMap.current.set(cellId, el);
+                      } else {
+                        cellRefsMap.current.delete(cellId);
+                      }
+                    }}
+                    type="number"
+                    className="right"
+                    value={r.suryo ?? ""}
+                    onChange={(e) => updateRow(idx, "suryo", e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, idx, "suryo")}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
+                  />
                 </td>
-                <td className="text-right">
-                  {tax != null ? tax.toLocaleString() : ""}
+
+                <td>
+                  <input
+                    ref={(el) => {
+                      const cellId = getCellId(idx, "tanni");
+                      if (el) {
+                        cellRefsMap.current.set(cellId, el);
+                      } else {
+                        cellRefsMap.current.delete(cellId);
+                      }
+                    }}
+                    className="center"
+                    value={r.tanni}
+                    onChange={(e) =>
+                      updateRow(idx, "tanni", e.target.value)
+                    }
+                    onKeyDown={(e) => handleKeyDown(e, idx, "tanni")}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
+                  />
                 </td>
-                <td className="no-border"></td>
-              </tr>
-            </>
-          )}
 
-          <tr>
-            <td className="no-border"></td>
-            <td colSpan={3} className="summary-label">合計</td>
-            <td className="text-right">{total.toLocaleString()}</td>
-            <td className="no-border"></td>
-          </tr>
+                <td>
+                  <input
+                    ref={(el) => {
+                      const cellId = getCellId(idx, "tannka");
+                      if (el) {
+                        cellRefsMap.current.set(cellId, el);
+                      } else {
+                        cellRefsMap.current.delete(cellId);
+                      }
+                    }}
+                    type="number"
+                    className="right"
+                    value={r.tannka ?? ""}
+                    onChange={(e) => updateRow(idx, "tannka", e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, idx, "tannka")}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
+                  />
+                </td>
 
-        </tbody>
-      </table>
+                <td>
+                  <input
+                    ref={(el) => {
+                      const cellId = getCellId(idx, "kingaku");
+                      if (el) {
+                        cellRefsMap.current.set(cellId, el);
+                      } else {
+                        cellRefsMap.current.delete(cellId);
+                      }
+                    }}
+                    type="number"
+                    className="right"
+                    value={r.kingaku ?? ""}
+                    onChange={(e) => updateRow(idx, "kingaku", e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, idx, "kingaku")}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
+                  />
+                </td>
 
-      <button onClick={addRow} style={{ marginTop: 10 }}>
-        ＋ 行追加
+                <td>
+                  <input
+                    ref={(el) => {
+                      const cellId = getCellId(idx, "bikou");
+                      if (el) {
+                        cellRefsMap.current.set(cellId, el);
+                      } else {
+                        cellRefsMap.current.delete(cellId);
+                      }
+                    }}
+                    value={r.bikou || ""}
+                    onChange={(e) =>
+                      updateRow(idx, "bikou", e.target.value)
+                    }
+                    onKeyDown={(e) => handleKeyDown(e, idx, "bikou")}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
+                  />
+                </td>
+
+                <td>
+                  <div className="row-actions">
+                    <button title="上に行を追加" onClick={() => addRow(idx)}>+</button>
+                    <button title="行を削除" onClick={() => removeRow(idx)}>-</button>
+                  </div>
+                </td>
+              </SortableRow>
+            ))}
+          </tbody>
+
+          <tfoot>
+            {h.zei_type === 0 && (
+              <>
+                <tr>
+                  <td colSpan={2} className="no-border"></td>
+                  <td colSpan={3} className="summary-label">小計</td>
+                  <td className="text-right">
+                    {subtotal != null ? subtotal.toLocaleString() : ""}
+                  </td>
+                  <td className="no-border"></td>
+                </tr>
+
+                <tr>
+                  <td colSpan={2} className="no-border"></td>
+                  <td colSpan={3} className="summary-label">
+                    {h.zeiritsu == null ? "消費税" : `消費税 (${h.zeiritsu}%)`}
+                  </td>
+                  <td className="text-right">
+                    {tax != null ? tax.toLocaleString() : ""}
+                  </td>
+                  <td className="no-border"></td>
+                </tr>
+              </>
+            )}
+
+            <tr>
+              <td colSpan={2} className="no-border"></td>
+              <td colSpan={3} className="summary-label">合計</td>
+              <td className="text-right">{total.toLocaleString()}</td>
+              <td className="no-border"></td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <DragOverlay>
+          {activeRowId ? (
+            <table className="detail-table drag-overlay-table">
+              <colgroup>
+                {/* 移動列 */}
+                <col style={{ width: "8mm" }} />
+
+                {/* 共通列 */}
+                {detailColumns.map((c) => (
+                  <col key={c.key} style={{ width: c.width }} />
+                ))}
+
+                {/* 削除列 */}
+                <col style={{ width: "16mm" }} />
+              </colgroup>
+
+              <tbody>
+                {(() => {
+                  const row = rows.find(
+                    (r) => r.id === activeRowId
+                  );
+
+                  if (!row) {
+                    return null;
+                  }
+
+                  return (
+                    <tr className="drag-overlay-row">
+                      <td>☰</td>
+                      <td>{row.hinmoku}</td>
+                      <td className="right">{row.suryo}</td>
+                      <td>{row.tanni}</td>
+                      <td className="right">{row.tannka}</td>
+                      <td className="right">{row.kingaku}</td>
+                      <td>{row.bikou}</td>
+                      <td></td>
+                    </tr>
+                  );
+                })()}
+              </tbody>
+            </table>
+          ) : null}
+        </DragOverlay>
+
+      </DndContext>
+
+      <button onClick={appendRow} style={{ marginTop: 10 }}>
+        + 行追加
       </button>
     </div>
+  );
+}
+
+// SortableRow コンポーネント作成
+function SortableRow({
+  row,
+  children,
+}: {
+  row: any;
+  idx: number;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: row.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+    background: isDragging ? "#e0f7fa" : undefined,
+    boxShadow: isDragging
+      ? "0 4px 12px rgba(0,0,0,0.2)"
+      : undefined,
+  };
+
+  return (
+    <tr ref={setNodeRef} style={style}>
+      <td
+        {...attributes}
+        {...listeners}
+        style={{
+          cursor: "grab",
+          userSelect: "none",
+          textAlign: "center",
+          color: "#999",
+          width: 30,
+        }}
+      >
+        ☰
+      </td>
+
+      {children}
+    </tr>
   );
 }
