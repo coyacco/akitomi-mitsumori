@@ -148,6 +148,7 @@ table.detail-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  table-layout: fixed;
 }
 
 table.detail-table th,
@@ -156,6 +157,7 @@ table.detail-table td {
   padding: 4px;
   height: 16px;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 table.detail-table th {
@@ -311,14 +313,39 @@ input:focus {
   }
 }
 
-/* 浮いてる感 */
-.dragging-row {
-  opacity: 0.5;
+/* ドラッグ時の浮いてる感 */
+.drag-overlay-table {
+  border-collapse: collapse;
+  pointer-events: none;
 }
 
-.detail-table tr {
-  transition:
-    background-color 0.15s,
-    transform 0.15s,
-    box-shadow 0.15s;
+.drag-overlay-row {
+  opacity: 0.75;
+
+  background: white;
+
+  box-shadow:
+    4px 4px 12px rgb(143, 143, 143);
+
+  cursor: grabbing;
+}
+
+/* 編集行の追加と削除のボタン */
+.row-actions {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.row-actions button {
+  padding: 0 6px;
+
+  min-width: 24px;
+  height: 24px;
+
+  font-size: 12px;
+  line-height: 1;
+
+  box-sizing: border-box;
 }

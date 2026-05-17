@@ -10,7 +10,9 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragStartEvent,
   DragEndEvent,
+  DragOverlay,
 } from "@dnd-kit/core";
 
 import {
@@ -253,18 +255,38 @@ export default function EditForm({
   // --- セル ID 生成 ---
   const getCellId = (rowIdx: number, colName: string) => `cell-${rowIdx}-${colName}`;
 
+
   // --- ドラッグ・アンド・ドロップハンドラ ---
+  const [activeRowId, setActiveRowId] = useState<string | null>(null);
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveRowId(event.active.id as string);
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+
+    setActiveRowId(null);
 
     if (!over || active.id === over.id) {
       return;
     }
 
-    const oldIndex = rows.findIndex((r) => r.id === active.id);
-    const newIndex = rows.findIndex((r) => r.id === over.id);
+    const oldIndex = rows.findIndex(
+      (r) => r.id === active.id
+    );
 
-    setRows((items) => arrayMove(items, oldIndex, newIndex));
+    const newIndex = rows.findIndex(
+      (r) => r.id === over.id
+    );
+
+    setRows((items) =>
+      arrayMove(items, oldIndex, newIndex)
+    );
+  }
+
+  function handleDragCancel() {
+    setActiveRowId(null);
   }
 
   // --- 次の編集可能セルへ移動 ---
@@ -622,10 +644,13 @@ export default function EditForm({
         </tbody>
       </table>
 
+      {/* --- ドラッグ＆ドロップ --- */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
 
         {/* --- 明細テーブル --- */}
@@ -785,8 +810,10 @@ export default function EditForm({
                 </td>
 
                 <td>
-                  <button title="上に行を追加" onClick={() => addRow(idx)}>+</button>
-                  <button title="行を削除" onClick={() => removeRow(idx)}>-</button>
+                  <div className="row-actions">
+                    <button title="上に行を追加" onClick={() => addRow(idx)}>+</button>
+                    <button title="行を削除" onClick={() => removeRow(idx)}>-</button>
+                  </div>
                 </td>
               </SortableRow>
             ))}
@@ -826,6 +853,50 @@ export default function EditForm({
           </tfoot>
         </table>
 
+        <DragOverlay>
+          {activeRowId ? (
+            <table className="detail-table drag-overlay-table">
+              <colgroup>
+                {/* 移動列 */}
+                <col style={{ width: "8mm" }} />
+
+                {/* 共通列 */}
+                {detailColumns.map((c) => (
+                  <col key={c.key} style={{ width: c.width }} />
+                ))}
+
+                {/* 削除列 */}
+                <col style={{ width: "16mm" }} />
+              </colgroup>
+
+              <tbody>
+                {(() => {
+                  const row = rows.find(
+                    (r) => r.id === activeRowId
+                  );
+
+                  if (!row) {
+                    return null;
+                  }
+
+                  return (
+                    <tr className="drag-overlay-row">
+                      <td>☰</td>
+                      <td>{row.hinmoku}</td>
+                      <td className="right">{row.suryo}</td>
+                      <td>{row.tanni}</td>
+                      <td className="right">{row.tannka}</td>
+                      <td className="right">{row.kingaku}</td>
+                      <td>{row.bikou}</td>
+                      <td></td>
+                    </tr>
+                  );
+                })()}
+              </tbody>
+            </table>
+          ) : null}
+        </DragOverlay>
+
       </DndContext>
 
       <button onClick={appendRow} style={{ marginTop: 10 }}>
@@ -859,7 +930,7 @@ function SortableRow({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.3 : 1,
     background: isDragging ? "#e0f7fa" : undefined,
     boxShadow: isDragging
       ? "0 4px 12px rgba(0,0,0,0.2)"
