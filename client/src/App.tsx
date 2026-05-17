@@ -70,7 +70,7 @@ export default function App() {
   useEffect(() => {
     if (!server) return;
 
-    fetch(`${server}/api/shain/0`)
+    fetch(`${server}/api/shain`)
       .then((r) => {
         if (!r.ok) throw new Error("Server error");
         return r.json();
