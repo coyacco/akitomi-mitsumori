@@ -4,6 +4,22 @@ import { todayJST } from "./utils";
 import { detailColumns } from "./types";
 import "./App.css";
 
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+
+import {
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+
+import { CSS } from "@dnd-kit/utilities";
+
 // UUID生成用の簡易関数
 const generateId = () => `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -103,9 +119,14 @@ export default function EditForm({
   const cellRefsMap = useRef<Map<string, HTMLInputElement | null>>(new Map());
   const [isComposing, setIsComposing] = useState(false);
 
-  // ドラッグ・アンド・ドロップ用の state
-  const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
-  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+  // ドラッグ・アンド・ドロップ用
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
 
   // 新規作成時の初期化
   useEffect(() => {
@@ -130,22 +151,6 @@ export default function EditForm({
       setOriginalRows(rows);
     }
   }, []);
-
-  // ドキュメント全体でマウスアップを監視
-  useEffect(() => {
-    const handleGlobalMouseUp = (_e: MouseEvent) => {
-      if (draggedRowId) {
-        console.log('Global mouseUp - dragging ended');
-        setDraggedRowId(null);
-        setHoveredRowId(null);
-      }
-    };
-
-    document.addEventListener('mouseup', handleGlobalMouseUp);
-    return () => {
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
-    };
-  }, [draggedRowId]);
 
   function hasChanges() {
     if (!originalHeader || !originalRows) return false;
@@ -249,128 +254,18 @@ export default function EditForm({
   const getCellId = (rowIdx: number, colName: string) => `cell-${rowIdx}-${colName}`;
 
   // --- ドラッグ・アンド・ドロップハンドラ ---
-  const handleRowDragStart = (e: React.DragEvent<HTMLTableRowElement>, rowId: string) => {
-    console.log('dragStart:', rowId);
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/html", e.currentTarget.innerHTML);
-    setDraggedRowId(rowId);
-  };
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
 
-  const handleRowDragOver = (e: React.DragEvent<HTMLTableRowElement>) => {
-    console.log('dragOver');
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleRowDrop = (e: React.DragEvent<HTMLTableRowElement>, targetRowId: string) => {
-    console.log('drop:', targetRowId, 'from:', draggedRowId);
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (draggedRowId === null || draggedRowId === targetRowId) {
-      setDraggedRowId(null);
+    if (!over || active.id === over.id) {
       return;
     }
 
-    setRows(prev => {
-      const draggedIdx = prev.findIndex(r => r.id === draggedRowId);
-      const targetIdx = prev.findIndex(r => r.id === targetRowId);
+    const oldIndex = rows.findIndex((r) => r.id === active.id);
+    const newIndex = rows.findIndex((r) => r.id === over.id);
 
-      console.log('draggedIdx:', draggedIdx, 'targetIdx:', targetIdx);
-
-      if (draggedIdx === -1 || targetIdx === -1) {
-        return prev;
-      }
-
-      const newRows = [...prev];
-      const draggedRow = newRows[draggedIdx];
-
-      // 1. ドラッグ行を削除
-      newRows.splice(draggedIdx, 1);
-
-      // 2. 削除後、ターゲットのインデックスが変わる場合がある
-      let insertIdx: number;
-      if (draggedIdx < targetIdx) {
-        // 下に移動する場合：ターゲットが1つ上にシフト
-        // ターゲットの直後に挿入するため、targetIdx - 1 + 1 = targetIdx
-        insertIdx = targetIdx;
-      } else {
-        // 上に移動する場合：ターゲットはシフトしない
-        insertIdx = targetIdx;
-      }
-
-      // 3. 計算した位置に挿入
-      newRows.splice(insertIdx, 0, draggedRow);
-
-      console.log('rows reordered - insertIdx:', insertIdx);
-      return newRows;
-    });
-
-    setDraggedRowId(null);
-    setHoveredRowId(null);
-  };
-
-  const handleRowDragEnd = () => {
-    console.log('dragEnd');
-    setDraggedRowId(null);
-  };
-
-  const handleHandleMouseDown = (e: React.MouseEvent, rowId: string) => {
-    console.log('handleMouseDown:', rowId);
-    setDraggedRowId(rowId);
-    e.preventDefault();
-  };
-
-  const handleRowMouseUp = (_e: React.MouseEvent, targetRowId: string) => {
-    console.log('rowMouseUp:', targetRowId);
-    if (draggedRowId && draggedRowId !== targetRowId) {
-      setRows(prev => {
-        const draggedIdx = prev.findIndex(r => r.id === draggedRowId);
-        const targetIdx = prev.findIndex(r => r.id === targetRowId);
-
-        console.log('mouseUp reorder - draggedIdx:', draggedIdx, 'targetIdx:', targetIdx);
-
-        if (draggedIdx === -1 || targetIdx === -1) {
-          return prev;
-        }
-
-        const newRows = [...prev];
-        const draggedRow = newRows[draggedIdx];
-
-        // 1. ドラッグ行を削除
-        newRows.splice(draggedIdx, 1);
-
-        // 2. 削除後、ターゲットのインデックスが変わる場合がある
-        let insertIdx: number;
-        if (draggedIdx < targetIdx) {
-          // 下に移動する場合：ターゲットが1つ上にシフト
-          // ターゲットの直後に挿入するため、targetIdx - 1 + 1 = targetIdx
-          insertIdx = targetIdx;
-        } else {
-          // 上に移動する場合：ターゲットはシフトしない
-          insertIdx = targetIdx;
-        }
-
-        // 3. 計算した位置に挿入
-        newRows.splice(insertIdx, 0, draggedRow);
-
-        console.log('rows reordered by mouse - insertIdx:', insertIdx);
-        return newRows;
-      });
-    }
-    setDraggedRowId(null);
-    setHoveredRowId(null);
-  };
-
-  const handleRowMouseEnter = (rowId: string) => {
-    if (draggedRowId) {
-      setHoveredRowId(rowId);
-    }
-  };
-
-  const handleRowMouseLeave = () => {
-    setHoveredRowId(null);
-  };
+    setRows((items) => arrayMove(items, oldIndex, newIndex));
+  }
 
   // --- 次の編集可能セルへ移動 ---
   const focusCell = (rowIdx: number, colIdx: number) => {
@@ -727,223 +622,267 @@ export default function EditForm({
         </tbody>
       </table>
 
-      {/* --- 明細テーブル --- */}
-      <table className="detail-table">
-        <colgroup>
-          {/* 移動列 */}
-          <col style={{ width: "8mm" }} />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
 
-          {/* 共通列 */}
-          {detailColumns.map((c) => (
-            <col key={c.key} style={{ width: c.width }} />
-          ))}
+        {/* --- 明細テーブル --- */}
+        <table className="detail-table">
+          <colgroup>
+            {/* 移動列 */}
+            <col style={{ width: "8mm" }} />
 
-          {/* 削除列 */}
-          <col style={{ width: "16mm" }} />
-        </colgroup>
-        <thead>
-          <tr>
-            <th></th>
-            <th>品目</th>
-            <th>数量</th>
-            <th>単位</th>
-            <th>単価</th>
-            <th>金額</th>
-            <th>備考</th>
-            <th></th>
-          </tr>
-        </thead>
+            {/* 共通列 */}
+            {detailColumns.map((c) => (
+              <col key={c.key} style={{ width: c.width }} />
+            ))}
 
-        <tbody>
-          {rows.map((r, idx) => (
-            <tr
-              key={r.id}
-              draggable
-              onDragStart={(e) => handleRowDragStart(e, r.id || '')}
-              onDragOver={handleRowDragOver}
-              onDrop={(e) => handleRowDrop(e, r.id || '')}
-              onDragEnd={handleRowDragEnd}
-              onMouseEnter={() => handleRowMouseEnter(r.id || '')}
-              onMouseLeave={handleRowMouseLeave}
-              onMouseUp={(e) => handleRowMouseUp(e, r.id || '')}
-              style={{
-                opacity: draggedRowId === r.id ? 0.6 : 1,
-                cursor: draggedRowId === r.id ? 'grabbing' : 'grab',
-                backgroundColor: draggedRowId === r.id ? '#4dd0e1' : (hoveredRowId === r.id && draggedRowId ? '#80deea' : 'transparent'),
-                transition: 'all 0.15s ease-out',
-              }}
-            >
-              <td
-                style={{ textAlign: 'center', color: '#999', cursor: draggedRowId ? 'grabbing' : 'grab', userSelect: 'none' }}
-                onMouseDown={(e) => handleHandleMouseDown(e, r.id || '')}
-              >
-                ☰
-              </td>
-              <td>
-                <input
-                  ref={(el) => {
-                    const cellId = getCellId(idx, "hinmoku");
-                    if (el) {
-                      cellRefsMap.current.set(cellId, el);
-                    } else {
-                      cellRefsMap.current.delete(cellId);
-                    }
-                  }}
-                  value={r.hinmoku}
-                  onChange={(e) =>
-                    updateRow(idx, "hinmoku", e.target.value)
-                  }
-                  onKeyDown={(e) => handleKeyDown(e, idx, "hinmoku")}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                />
-              </td>
-
-              <td>
-                <input
-                  ref={(el) => {
-                    const cellId = getCellId(idx, "suryo");
-                    if (el) {
-                      cellRefsMap.current.set(cellId, el);
-                    } else {
-                      cellRefsMap.current.delete(cellId);
-                    }
-                  }}
-                  type="number"
-                  className="right"
-                  value={r.suryo ?? ""}
-                  onChange={(e) => updateRow(idx, "suryo", e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, idx, "suryo")}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                />
-              </td>
-
-              <td>
-                <input
-                  ref={(el) => {
-                    const cellId = getCellId(idx, "tanni");
-                    if (el) {
-                      cellRefsMap.current.set(cellId, el);
-                    } else {
-                      cellRefsMap.current.delete(cellId);
-                    }
-                  }}
-                  className="center"
-                  value={r.tanni}
-                  onChange={(e) =>
-                    updateRow(idx, "tanni", e.target.value)
-                  }
-                  onKeyDown={(e) => handleKeyDown(e, idx, "tanni")}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                />
-              </td>
-
-              <td>
-                <input
-                  ref={(el) => {
-                    const cellId = getCellId(idx, "tannka");
-                    if (el) {
-                      cellRefsMap.current.set(cellId, el);
-                    } else {
-                      cellRefsMap.current.delete(cellId);
-                    }
-                  }}
-                  type="number"
-                  className="right"
-                  value={r.tannka ?? ""}
-                  onChange={(e) => updateRow(idx, "tannka", e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, idx, "tannka")}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                />
-              </td>
-
-              <td>
-                <input
-                  ref={(el) => {
-                    const cellId = getCellId(idx, "kingaku");
-                    if (el) {
-                      cellRefsMap.current.set(cellId, el);
-                    } else {
-                      cellRefsMap.current.delete(cellId);
-                    }
-                  }}
-                  type="number"
-                  className="right"
-                  value={r.kingaku ?? ""}
-                  onChange={(e) => updateRow(idx, "kingaku", e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, idx, "kingaku")}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                />
-              </td>
-
-              <td>
-                <input
-                  ref={(el) => {
-                    const cellId = getCellId(idx, "bikou");
-                    if (el) {
-                      cellRefsMap.current.set(cellId, el);
-                    } else {
-                      cellRefsMap.current.delete(cellId);
-                    }
-                  }}
-                  value={r.bikou || ""}
-                  onChange={(e) =>
-                    updateRow(idx, "bikou", e.target.value)
-                  }
-                  onKeyDown={(e) => handleKeyDown(e, idx, "bikou")}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                />
-              </td>
-
-              <td>
-                <button title="上に行を追加" onClick={() => addRow(idx)}>+</button>
-                <button title="行を削除" onClick={() => removeRow(idx)}>-</button>
-              </td>
+            {/* 削除列 */}
+            <col style={{ width: "16mm" }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <th></th>
+              <th>品目</th>
+              <th>数量</th>
+              <th>単位</th>
+              <th>単価</th>
+              <th>金額</th>
+              <th>備考</th>
+              <th></th>
             </tr>
-          ))}
+          </thead>
 
-          {h.zei_type === 0 && (
-            <>
-              <tr>
-                <td colSpan={2} className="no-border"></td>
-                <td colSpan={3} className="summary-label">小計</td>
-                <td className="text-right">
-                  {subtotal != null ? subtotal.toLocaleString() : ""}
+          <tbody>
+            {rows.map((r, idx) => (
+              <SortableRow
+                key={r.id}
+                row={r}
+                idx={idx}
+              >
+
+                <td>
+                  <input
+                    ref={(el) => {
+                      const cellId = getCellId(idx, "hinmoku");
+                      if (el) {
+                        cellRefsMap.current.set(cellId, el);
+                      } else {
+                        cellRefsMap.current.delete(cellId);
+                      }
+                    }}
+                    value={r.hinmoku}
+                    onChange={(e) =>
+                      updateRow(idx, "hinmoku", e.target.value)
+                    }
+                    onKeyDown={(e) => handleKeyDown(e, idx, "hinmoku")}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
+                  />
                 </td>
-                <td className="no-border"></td>
-              </tr>
 
-              <tr>
-                <td colSpan={2} className="no-border"></td>
-                <td colSpan={3} className="summary-label">
-                  {h.zeiritsu == null ? "消費税" : `消費税 (${h.zeiritsu}%)`}
+                <td>
+                  <input
+                    ref={(el) => {
+                      const cellId = getCellId(idx, "suryo");
+                      if (el) {
+                        cellRefsMap.current.set(cellId, el);
+                      } else {
+                        cellRefsMap.current.delete(cellId);
+                      }
+                    }}
+                    type="number"
+                    className="right"
+                    value={r.suryo ?? ""}
+                    onChange={(e) => updateRow(idx, "suryo", e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, idx, "suryo")}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
+                  />
                 </td>
-                <td className="text-right">
-                  {tax != null ? tax.toLocaleString() : ""}
+
+                <td>
+                  <input
+                    ref={(el) => {
+                      const cellId = getCellId(idx, "tanni");
+                      if (el) {
+                        cellRefsMap.current.set(cellId, el);
+                      } else {
+                        cellRefsMap.current.delete(cellId);
+                      }
+                    }}
+                    className="center"
+                    value={r.tanni}
+                    onChange={(e) =>
+                      updateRow(idx, "tanni", e.target.value)
+                    }
+                    onKeyDown={(e) => handleKeyDown(e, idx, "tanni")}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
+                  />
                 </td>
-                <td className="no-border"></td>
-              </tr>
-            </>
-          )}
 
-          <tr>
-            <td colSpan={2} className="no-border"></td>
-            <td colSpan={3} className="summary-label">合計</td>
-            <td className="text-right">{total.toLocaleString()}</td>
-            <td className="no-border"></td>
-          </tr>
+                <td>
+                  <input
+                    ref={(el) => {
+                      const cellId = getCellId(idx, "tannka");
+                      if (el) {
+                        cellRefsMap.current.set(cellId, el);
+                      } else {
+                        cellRefsMap.current.delete(cellId);
+                      }
+                    }}
+                    type="number"
+                    className="right"
+                    value={r.tannka ?? ""}
+                    onChange={(e) => updateRow(idx, "tannka", e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, idx, "tannka")}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
+                  />
+                </td>
 
-        </tbody>
-      </table>
+                <td>
+                  <input
+                    ref={(el) => {
+                      const cellId = getCellId(idx, "kingaku");
+                      if (el) {
+                        cellRefsMap.current.set(cellId, el);
+                      } else {
+                        cellRefsMap.current.delete(cellId);
+                      }
+                    }}
+                    type="number"
+                    className="right"
+                    value={r.kingaku ?? ""}
+                    onChange={(e) => updateRow(idx, "kingaku", e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, idx, "kingaku")}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
+                  />
+                </td>
+
+                <td>
+                  <input
+                    ref={(el) => {
+                      const cellId = getCellId(idx, "bikou");
+                      if (el) {
+                        cellRefsMap.current.set(cellId, el);
+                      } else {
+                        cellRefsMap.current.delete(cellId);
+                      }
+                    }}
+                    value={r.bikou || ""}
+                    onChange={(e) =>
+                      updateRow(idx, "bikou", e.target.value)
+                    }
+                    onKeyDown={(e) => handleKeyDown(e, idx, "bikou")}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={() => setIsComposing(false)}
+                  />
+                </td>
+
+                <td>
+                  <button title="上に行を追加" onClick={() => addRow(idx)}>+</button>
+                  <button title="行を削除" onClick={() => removeRow(idx)}>-</button>
+                </td>
+              </SortableRow>
+            ))}
+          </tbody>
+
+          <tfoot>
+            {h.zei_type === 0 && (
+              <>
+                <tr>
+                  <td colSpan={2} className="no-border"></td>
+                  <td colSpan={3} className="summary-label">小計</td>
+                  <td className="text-right">
+                    {subtotal != null ? subtotal.toLocaleString() : ""}
+                  </td>
+                  <td className="no-border"></td>
+                </tr>
+
+                <tr>
+                  <td colSpan={2} className="no-border"></td>
+                  <td colSpan={3} className="summary-label">
+                    {h.zeiritsu == null ? "消費税" : `消費税 (${h.zeiritsu}%)`}
+                  </td>
+                  <td className="text-right">
+                    {tax != null ? tax.toLocaleString() : ""}
+                  </td>
+                  <td className="no-border"></td>
+                </tr>
+              </>
+            )}
+
+            <tr>
+              <td colSpan={2} className="no-border"></td>
+              <td colSpan={3} className="summary-label">合計</td>
+              <td className="text-right">{total.toLocaleString()}</td>
+              <td className="no-border"></td>
+            </tr>
+          </tfoot>
+        </table>
+
+      </DndContext>
 
       <button onClick={appendRow} style={{ marginTop: 10 }}>
         + 行追加
       </button>
     </div>
+  );
+}
+
+// SortableRow コンポーネント作成
+function SortableRow({
+  row,
+  idx,
+  children,
+}: {
+  row: any;
+  idx: number;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: row.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    background: isDragging ? "#e0f7fa" : undefined,
+    boxShadow: isDragging
+      ? "0 4px 12px rgba(0,0,0,0.2)"
+      : undefined,
+  };
+
+  return (
+    <tr ref={setNodeRef} style={style}>
+      <td
+        {...attributes}
+        {...listeners}
+        style={{
+          cursor: "grab",
+          userSelect: "none",
+          textAlign: "center",
+          color: "#999",
+          width: 30,
+        }}
+      >
+        ☰
+      </td>
+
+      {children}
+    </tr>
   );
 }

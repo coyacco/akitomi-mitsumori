@@ -310,3 +310,15 @@ input:focus {
     margin: 0;
   }
 }
+
+/* 浮いてる感 */
+.dragging-row {
+  opacity: 0.5;
+}
+
+.detail-table tr {
+  transition:
+    background-color 0.15s,
+    transform 0.15s,
+    box-shadow 0.15s;
+}
