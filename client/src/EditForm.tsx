@@ -104,6 +104,7 @@ export default function EditForm({
 
   // ドラッグ・アンド・ドロップ用の state
   const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
 
   // 新規作成時の初期化
   useEffect(() => {
@@ -190,17 +191,22 @@ export default function EditForm({
 
   // --- ドラッグ・アンド・ドロップハンドラ ---
   const handleRowDragStart = (e: React.DragEvent<HTMLTableRowElement>, rowId: string) => {
-    setDraggedRowId(rowId);
+    console.log('dragStart:', rowId);
     e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/html", e.currentTarget.innerHTML);
+    setDraggedRowId(rowId);
   };
 
   const handleRowDragOver = (e: React.DragEvent<HTMLTableRowElement>) => {
+    console.log('dragOver');
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
   };
 
   const handleRowDrop = (e: React.DragEvent<HTMLTableRowElement>, targetRowId: string) => {
+    console.log('drop:', targetRowId, 'from:', draggedRowId);
     e.preventDefault();
+    e.stopPropagation();
     
     if (draggedRowId === null || draggedRowId === targetRowId) {
       setDraggedRowId(null);
@@ -210,6 +216,8 @@ export default function EditForm({
     setRows(prev => {
       const draggedIdx = prev.findIndex(r => r.id === draggedRowId);
       const targetIdx = prev.findIndex(r => r.id === targetRowId);
+      
+      console.log('draggedIdx:', draggedIdx, 'targetIdx:', targetIdx);
       
       if (draggedIdx === -1 || targetIdx === -1) {
         return prev;
@@ -224,14 +232,61 @@ export default function EditForm({
       const insertIdx = draggedIdx < targetIdx ? targetIdx - 1 : targetIdx;
       newRows.splice(insertIdx, 0, draggedRow);
       
+      console.log('rows reordered');
       return newRows;
     });
 
     setDraggedRowId(null);
+    setHoveredRowId(null);
   };
 
   const handleRowDragEnd = () => {
+    console.log('dragEnd');
     setDraggedRowId(null);
+  };
+
+  const handleHandleMouseDown = (e: React.MouseEvent, rowId: string) => {
+    console.log('handleMouseDown:', rowId);
+    setDraggedRowId(rowId);
+    e.preventDefault();
+  };
+
+  const handleRowMouseUp = (_e: React.MouseEvent, targetRowId: string) => {
+    console.log('rowMouseUp:', targetRowId);
+    if (draggedRowId && draggedRowId !== targetRowId) {
+      setRows(prev => {
+        const draggedIdx = prev.findIndex(r => r.id === draggedRowId);
+        const targetIdx = prev.findIndex(r => r.id === targetRowId);
+        
+        console.log('mouseUp reorder - draggedIdx:', draggedIdx, 'targetIdx:', targetIdx);
+        
+        if (draggedIdx === -1 || targetIdx === -1) {
+          return prev;
+        }
+
+        const newRows = [...prev];
+        const draggedRow = newRows[draggedIdx];
+        
+        newRows.splice(draggedIdx, 1);
+        const insertIdx = draggedIdx < targetIdx ? targetIdx - 1 : targetIdx;
+        newRows.splice(insertIdx, 0, draggedRow);
+        
+        console.log('rows reordered by mouse');
+        return newRows;
+      });
+    }
+    setDraggedRowId(null);
+    setHoveredRowId(null);
+  };
+
+  const handleRowMouseEnter = (rowId: string) => {
+    if (draggedRowId) {
+      setHoveredRowId(rowId);
+    }
+  };
+
+  const handleRowMouseLeave = () => {
+    setHoveredRowId(null);
   };
 
   // --- 次の編集可能セルへ移動 ---
@@ -613,13 +668,21 @@ export default function EditForm({
               onDragOver={handleRowDragOver}
               onDrop={(e) => handleRowDrop(e, r.id || '')}
               onDragEnd={handleRowDragEnd}
+              onMouseEnter={() => handleRowMouseEnter(r.id || '')}
+              onMouseLeave={handleRowMouseLeave}
+              onMouseUp={(e) => handleRowMouseUp(e, r.id || '')}
               style={{
                 opacity: draggedRowId === r.id ? 0.5 : 1,
-                cursor: 'grab',
-                backgroundColor: draggedRowId === r.id ? '#f0f0f0' : 'transparent',
+                cursor: draggedRowId === r.id ? 'grabbing' : 'grab',
+                backgroundColor: hoveredRowId === r.id && draggedRowId ? '#e8f5e9' : (draggedRowId === r.id ? '#f0f0f0' : 'transparent'),
               }}
             >
-              <td style={{ textAlign: 'center', color: '#999', cursor: 'grab' }}>☰</td>
+              <td 
+                style={{ textAlign: 'center', color: '#999', cursor: draggedRowId ? 'grabbing' : 'grab', userSelect: 'none' }}
+                onMouseDown={(e) => handleHandleMouseDown(e, r.id || '')}
+              >
+                ☰
+              </td>
               <td>
                 <input
                   ref={(el) => {
